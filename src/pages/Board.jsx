@@ -1,6 +1,6 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import Cards from "../components/Board/Cards";
 import { CardsContext } from "../contexts/CardsContext";
 import optionLineLogo from "../assets/option-line.svg";
@@ -27,7 +27,7 @@ function Board() {
     const newBoard = { id: newBoardId, title: `Board ${boards.length + 1}`, cards: defaultCards };
     setBoards([...boards, newBoard]);
     setActiveBoard(newBoardId);
-    handleTitleClick(newBoardId, `Board ${boards.length + 1}`);
+    handleTitleClick(newBoardId, `Untitled ${boards.length + 1}`);
   };
 
   const deleteBoard = (boardId) => {
@@ -128,19 +128,22 @@ function Board() {
       <div className="flex-grow flex overflow-hidden">
         <div 
           ref={sidebarRef}
-          className={`sidebar bg-gray-100 overflow-y-auto z-10 transition-all duration-300 ease-in-out ${
-            isSidebarOpen ? 'w-64' : 'w-0'
-          } absolute top-0 bottom-0 left-0`}
+          className={`sidebar bg-blue-50 shadow-xl overflow-y-auto z-10 transition-all duration-300 ease-in-out h-[80%] ${
+            isSidebarOpen ? 'w-64 rounded-md overflow-x-hidden' : `w-9 drop-shadow-xl rounded-md overflow-x-hidden`
+          } absolute top-16 left-0`}
+          onMouseEnter={() => setIsSidebarOpen(true)}
+          onMouseLeave={() => setIsSidebarOpen(false)}
         >
-          <div className="p-4">
-            <div className="board-tabs flex flex-col items-start gap-4">
+          { isSidebarOpen && <div className="p-4">
+            <h1 className="pl-1 mb-4 text-xl font-bold">Projects</h1>
+            <div className="board-tabs flex flex-col items-start gap-1">
               {boards.map((board) => (
                 <div
                   key={board.id}
                   className={`board-tab p-2 w-full border-black cursor-pointer flex transition-colors duration-300 ${
                     board.id === activeBoard
-                      ? "text-blue-500 bg-white rounded-md"
-                      : "border-transparent text-gray-600 hover:text-blue-500"
+                      ? "text-blue-500 bg-blue-200 rounded-md"
+                      : "border-transparent text-gray-600 rounded-md hover:text-blue-500 hover:bg-blue-50"
                   }`}
                   onClick={() => setActiveBoard(board.id)}
                 >
@@ -152,7 +155,7 @@ function Board() {
                         onChange={handleTitleChange}
                         onBlur={() => handleTitleBlur(board.id)}
                         onKeyDown={(e) => handleTitleKeyDown(e, board.id)}
-                        className={`w-full overflow-x-auto border-b-2 focus:outline-none ${isDuplicate ? 'border-red-500' : 'border-blue-500'}`}
+                        className={`w-full overflow-x-auto bg-transparent border-b-2 focus:outline-none ${isDuplicate ? 'border-red-500' : 'border-blue-500'}`}
                         autoFocus
                       />
                       {isDuplicate && (
@@ -192,13 +195,13 @@ function Board() {
                 </div>
               ))}
               <button
-                className="add-board-btn text-blue-500 hover:text-blue-700 mt-4"
+                className="add-board-btn text-gray-400 opacity-80 hover:text-gray-700 mt-4"
                 onClick={addBoard}
               >
                 + Add Board
               </button>
             </div>
-          </div>
+          </div>}
         </div>
         <div className="flex-grow overflow-auto">
           <div className="p-4">
@@ -209,12 +212,12 @@ function Board() {
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 >
                   {isSidebarOpen ? (
-                    <FiChevronLeft className="text-2xl" />
+                    <VscLayoutSidebarLeft className="text-lg" />
                   ) : (
-                    <FiChevronRight className="text-2xl" />
+                    <VscLayoutSidebarLeftOff className="text-lg" />
                   )}
                 </button>
-                <h1 className="text-4xl font-bold">
+                <h1 className="text-3xl font-bold">
                   {boards.find(board => board.id === activeBoard)?.title}
                 </h1>
               </div>

@@ -10,7 +10,7 @@ const defaultCards = [
 ];
 
 export const CardsProvider = ({ children }) => {
-  const initialBoards = JSON.parse(localStorage.getItem('boards')) || [{ id: uuidv4(), title: "Board 1", cards: defaultCards }];
+  const initialBoards = JSON.parse(localStorage.getItem('boards')) || [{ id: uuidv4(), title: "Untitled", cards: defaultCards }];
 
   const [boards, setBoards] = useState(initialBoards);
 

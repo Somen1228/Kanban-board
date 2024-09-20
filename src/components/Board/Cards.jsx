@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useContext } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useContext,
+} from "react";
 import Card from "./Card";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
@@ -9,57 +15,67 @@ function Cards({ boardId, searchTerm }) {
   const [toggleModal, setToggleModal] = useState(false);
   const modalRef = useRef(null);
   const [draggedTask, setDraggedTask] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(""); // State for selected color filter
 
-  const addCard = useCallback((title, color) => {
-    const newCard = { title, color, isVisible: false, tasks: {} };
+  const addCard = useCallback(
+    (title, color) => {
+      const newCard = { title, color, isVisible: false, tasks: {} };
 
-    setBoards((prevBoards) =>
-      prevBoards.map((b) =>
-        b.id === boardId ? { ...b, cards: [...b.cards, newCard] } : b
-      )
-    );
+      setBoards((prevBoards) =>
+        prevBoards.map((b) =>
+          b.id === boardId ? { ...b, cards: [...b.cards, newCard] } : b
+        )
+      );
 
-    setTimeout(() => {
+      setTimeout(() => {
+        setBoards((prevBoards) =>
+          prevBoards.map((b) =>
+            b.id === boardId
+              ? {
+                  ...b,
+                  cards: b.cards.map((card, index) =>
+                    index === b.cards.length - 1
+                      ? { ...card, isVisible: true }
+                      : card
+                  ),
+                }
+              : b
+          )
+        );
+      }, 10);
+      setToggleModal(false);
+    },
+    [boardId, setBoards]
+  );
+
+  const updateCardTasks = useCallback(
+    (cardIndex, tasks) => {
       setBoards((prevBoards) =>
         prevBoards.map((b) =>
           b.id === boardId
             ? {
                 ...b,
-                cards: b.cards.map((card, index) =>
-                  index === b.cards.length - 1
-                    ? { ...card, isVisible: true }
-                    : card
+                cards: b.cards.map((card, i) =>
+                  i === cardIndex ? { ...card, tasks } : card
                 ),
               }
             : b
         )
       );
-    }, 10);
-    setToggleModal(false);
-  }, [boardId, setBoards]);
+    },
+    [boardId, setBoards]
+  );
 
-  const updateCardTasks = useCallback((cardIndex, tasks) => {
-    setBoards((prevBoards) =>
-      prevBoards.map((b) =>
-        b.id === boardId
-          ? {
-              ...b,
-              cards: b.cards.map((card, i) =>
-                i === cardIndex ? { ...card, tasks } : card
-              ),
-            }
-          : b
-      )
-    );
-  }, [boardId, setBoards]);
-
-  const updateCards = useCallback((updateFn) => {
-    setBoards((prevBoards) =>
-      prevBoards.map((b) =>
-        b.id === boardId ? { ...b, cards: updateFn(b.cards) } : b
-      )
-    );
-  }, [boardId, setBoards]);
+  const updateCards = useCallback(
+    (updateFn) => {
+      setBoards((prevBoards) =>
+        prevBoards.map((b) =>
+          b.id === boardId ? { ...b, cards: updateFn(b.cards) } : b
+        )
+      );
+    },
+    [boardId, setBoards]
+  );
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -79,7 +95,10 @@ function Cards({ boardId, searchTerm }) {
 
   const handleDragStart = (e, task, sourceCardIndex) => {
     setDraggedTask({ task, sourceCardIndex });
-    e.dataTransfer.setData('text/plain', JSON.stringify({ task, sourceCardIndex }));
+    e.dataTransfer.setData(
+      "text/plain",
+      JSON.stringify({ task, sourceCardIndex })
+    );
   };
 
   const handleDragOver = (e) => {
@@ -118,10 +137,37 @@ function Cards({ boardId, searchTerm }) {
     setDraggedTask(null);
   };
 
+  const handleColorFilterChange = (e) => {
+    setSelectedColor(e.target.value);
+  };
+
+  const uniqueColors = [
+    ...new Set(board.cards.map((card) => card.color.trim())),
+  ];
+
+  const filteredCards = selectedColor
+    ? board.cards.filter((card) => card.color === selectedColor)
+    : board.cards;
+
   return (
     <div>
-      <div className="container">
-        {board.cards.map((card, cardIndex) => (
+      <div className="pl-10 filter-container mb-4">
+        <label htmlFor="colorFilter">Filter by color: </label>
+        <select
+          id="colorFilter"
+          value={selectedColor}
+          onChange={handleColorFilterChange}
+        >
+          <option value="">All</option>
+          {uniqueColors.map((color, index) => (
+            <option key={index} value={color}>
+                {color.charAt(3).toUpperCase() + color.slice(4,-4)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="container pl-10">
+        {filteredCards.map((card, cardIndex) => (
           <Card
             key={cardIndex}
             index={cardIndex}
@@ -135,7 +181,9 @@ function Cards({ boardId, searchTerm }) {
             cards={board.cards}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
-            onDrop={(e, targetTaskIndex) => handleDrop(e, cardIndex, targetTaskIndex)}
+            onDrop={(e, targetTaskIndex) =>
+              handleDrop(e, cardIndex, targetTaskIndex)
+            }
           />
         ))}
 

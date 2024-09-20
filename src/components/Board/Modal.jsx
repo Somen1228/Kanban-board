@@ -76,12 +76,12 @@ const Modal = forwardRef(({ addCard, cards }, ref) => {
               onClick={() => setSelectedColor("bg-pink-200")}
             ></div>
             <div
-              className={`priority-colors bg-blue-200 hover:ring-2 hover:ring-blue-500 ${selectedColor === "bg-blue-200" ? "ring-2 ring-blue-500" : ""}`}
-              onClick={() => setSelectedColor("bg-blue-200")}
+              className={`priority-colors bg-sky-200 hover:ring-2 hover:ring-sky-500 ${selectedColor === "bg-sky-200" ? "ring-2 ring-sky-500" : ""}`}
+              onClick={() => setSelectedColor("bg-sky-200")}
             ></div>
             <div
-              className={`priority-colors bg-green-200 hover:ring-2 hover:ring-green-500 ${selectedColor === "bg-green-200" ? "ring-2 ring-green-500" : ""}`}
-              onClick={() => setSelectedColor("bg-green-200")}
+              className={`priority-colors bg-teal-200 hover:ring-2 hover:ring-teal-500 ${selectedColor === "bg-teal-200" ? "ring-2 ring-teal-500" : ""}`}
+              onClick={() => setSelectedColor("bg-teal-200")}
             ></div>
             <div
               className={`priority-colors bg-yellow-200 hover:ring-2 hover:ring-yellow-500 ${selectedColor === "bg-yellow-200" ? "ring-2 ring-yellow-500" : ""}`}

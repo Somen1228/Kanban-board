@@ -203,7 +203,7 @@ function Cards({ boardId, searchTerm }) {
               ))}
             </select>
           </div>
-          <div className="reset-board text-xl">
+          <div className="reset-board text-xl mr-5">
             <button onClick={handleResetClick} title="Reset board to default"><VscHistory /></button>
           </div>
         </div>

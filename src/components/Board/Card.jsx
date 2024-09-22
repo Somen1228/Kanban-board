@@ -262,6 +262,7 @@ function Card({
                               startEditingTask(task.id, task.value)
                             }
                             className="text-gray-400 hover:text-blue-500"
+                            title="Edit task"
                           >
                             <img
                               className="hover:scale-125 hover:duration-400 hover:ease-in-out"
@@ -272,12 +273,14 @@ function Card({
                           <button
                             onClick={() => toggleDoneTask(task.id)}
                             className="text-gray-400 hover:text-green-500 pr-1"
+                            title="Mark as done"
                           >
                             <i className="fa-regular fa-check-circle"></i>
                           </button>
                           <button
                             onClick={() => deleteTask(task.id)}
                             className="text-gray-400 hover:text-red-500 pr-"
+                            title="Delete task"
                           >
                             <i className="fa-regular fa-trash-can"></i>
                           </button>

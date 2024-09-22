@@ -224,7 +224,7 @@ function Board() {
                   {boards.find(board => board.id === activeBoard)?.title}
                 </h1>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center border rounded-3xl px-2 py-1 mr-5">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-5 w-5 pt-0.5 text-gray-600"
@@ -240,7 +240,7 @@ function Board() {
                   />
                 </svg>
                 <input
-                  className="ml-2 text-lg outline-none bg-transparent"
+                  className="ml-2 text-md outline-none bg-transparent"
                   type="text"
                   name="search"
                   id="search"

@@ -128,11 +128,14 @@ function Board() {
       <div className="flex-grow flex overflow-hidden">
         <div 
           ref={sidebarRef}
-          className={`sidebar bg-blue-50 shadow-xl overflow-y-auto z-10 transition-all duration-300 ease-in-out h-[80%] ${
+          className={`sidebar bg-gray-50 shadow-xl overflow-y-auto z-10 transition-all duration-300 ease-in-out h-[80%] ${
             isSidebarOpen ? 'w-64 rounded-md overflow-x-hidden' : `w-9 drop-shadow-xl rounded-md overflow-x-hidden`
           } absolute top-16 left-0`}
           onMouseEnter={() => setIsSidebarOpen(true)}
-          onMouseLeave={() => setIsSidebarOpen(false)}
+          onMouseLeave={() => {
+            setDropdownBoardId(null);
+            setIsSidebarOpen(false)
+            }}
         >
           { isSidebarOpen && <div className="p-4">
             <h1 className="pl-1 mb-4 text-xl font-bold">Projects</h1>
@@ -142,7 +145,7 @@ function Board() {
                   key={board.id}
                   className={`board-tab p-2 w-full border-black cursor-pointer flex transition-colors duration-300 ${
                     board.id === activeBoard
-                      ? "text-blue-500 bg-blue-200 rounded-md"
+                      ? "text-gray-800 bg-gray-200 rounded-md font-medium"
                       : "border-transparent text-gray-600 rounded-md hover:text-blue-500 hover:bg-blue-50"
                   }`}
                   onClick={() => setActiveBoard(board.id)}
@@ -182,7 +185,9 @@ function Board() {
                           handleDropdownClick(board.id);
                         }}
                       />
-                      {dropdownBoardId === board.id && (
+                    </div>
+                  )}
+                  {dropdownBoardId === board.id && (
                         <div ref={(el) => (dropdownRefs.current[board.id] = el)}>
                           <DropdownMenu
                             onEdit={() => handleTitleClick(board.id, board.title)}
@@ -190,15 +195,13 @@ function Board() {
                           />
                         </div>
                       )}
-                    </div>
-                  )}
                 </div>
               ))}
               <button
                 className="add-board-btn text-gray-400 opacity-80 hover:text-gray-700 mt-4"
                 onClick={addBoard}
               >
-                + Add Board
+                + New Project
               </button>
             </div>
           </div>}

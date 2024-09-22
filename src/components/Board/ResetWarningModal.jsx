@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
+function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
   const [inputValue, setInputValue] = useState("");
   const modalRef = useRef();
 
@@ -8,15 +8,15 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
     setInputValue(e.target.value);
   };
 
-  const handleDelete = () => {
-    if (inputValue === `delete ${boardName}`) {
-      onDeleteConfirm();
+  const handleReset = () => {
+    if (inputValue === `reset ${boardName}`) {
+      handleResetConfirm();
     }
   };
 
   const handleClickOutside = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onCancel();
+      handleCancel();
     }
   };
 
@@ -30,15 +30,15 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div ref={modalRef} className="bg-white p-6 rounded shadow-lg z-60">
-        <h2 className="text-lg font-semibold mb-4">Delete Board</h2>
+        <h2 className="text-lg font-semibold mb-4">Reset Board</h2>
         <p className="mb-4">
-          Are you sure you want to delete this board? This action cannot be
-          undone.{" "}
+          Are you sure you want to reset this board? This action cannot be
+          undone.
         </p>
         <p className=" mb-2">
           To confirm, type{" "}
           <span className="text-red-500 font-medium bg-gray-300 bg-opacity-25 px-2 py-1 rounded-md">
-            delete {boardName}
+            reset {boardName}
           </span>{" "}
           below.
         </p>
@@ -50,16 +50,16 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
         />
         <div className="flex justify-end">
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
           >
             Cancel
           </button>
           <button
-            onClick={handleDelete}
+            onClick={handleReset}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
           >
-            Delete
+            Reset
           </button>
         </div>
       </div>
@@ -67,4 +67,4 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
   );
 }
 
-export default WarningModal;
+export default ResetWarningModal;

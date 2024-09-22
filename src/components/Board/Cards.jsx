@@ -8,14 +8,19 @@ import React, {
 import Card from "./Card";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
+import { VscHistory, VscListFilter } from "react-icons/vsc";
+import WarningModal from "./WarningModal";
+import ResetWarningModal from "./ResetWarningModal";
+import { BiReset } from "react-icons/bi";
 
 function Cards({ boardId, searchTerm }) {
-  const { boards, setBoards } = useContext(CardsContext);
+  const { boards, setBoards, defaultCards } = useContext(CardsContext);
   const board = boards.find((b) => b.id === boardId);
   const [toggleModal, setToggleModal] = useState(false);
   const modalRef = useRef(null);
   const [draggedTask, setDraggedTask] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(""); // State for selected color filter
+  const [selectedColor, setSelectedColor] = useState("");
+  const [warningBoardReset, setWarningBoardReset] = useState(false);
 
   const addCard = useCallback(
     (title, color) => {
@@ -149,22 +154,59 @@ function Cards({ boardId, searchTerm }) {
     ? board.cards.filter((card) => card.color === selectedColor)
     : board.cards;
 
+  const resetBoard = () => {
+    setBoards((prev) => {
+      const updatedBoards = prev.map((b) => {
+        if (b.id === board.id) {
+          return {
+            ...b,
+            cards: defaultCards,
+          };
+        }
+        return b;
+      });
+      return updatedBoards;
+    });
+  };
+
+  const handleResetClick = () => {
+    setWarningBoardReset(true);
+  };
+
+  const handleResetConfirm = () => {
+    resetBoard();
+    setWarningBoardReset(false);
+  };
+
+  const handleCancel = () => {
+    setWarningBoardReset(false);
+  };
+
   return (
     <div>
-      <div className="pl-10 filter-container mb-4">
-        <label htmlFor="colorFilter">Filter by color: </label>
-        <select
-          id="colorFilter"
-          value={selectedColor}
-          onChange={handleColorFilterChange}
-        >
-          <option value="">All</option>
-          {uniqueColors.map((color, index) => (
-            <option key={index} value={color}>
-                {color.charAt(3).toUpperCase() + color.slice(4,-4)}
-            </option>
-          ))}
-        </select>
+      <div className="pl-10 option-container mb-4 w-auto ">
+        <div className="flex items-center justify-between">
+          <div className="filter-board flex items-center" title="Filter cards by color">
+            <label htmlFor="colorFilter">
+              <VscListFilter />
+            </label>
+            <select
+              id="colorFilter"
+              value={selectedColor}
+              onChange={handleColorFilterChange}
+            >
+              <option value="">All</option>
+              {uniqueColors.map((color, index) => (
+                <option key={index} value={color}>
+                  {color.charAt(3).toUpperCase() + color.slice(4, -4)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="reset-board text-xl">
+            <button onClick={handleResetClick} title="Reset board to default"><VscHistory /></button>
+          </div>
+        </div>
       </div>
       <div className="container pl-10">
         {filteredCards.map((card, cardIndex) => (
@@ -193,6 +235,14 @@ function Cards({ boardId, searchTerm }) {
           <button onClick={() => setToggleModal(true)} className="add-btn">
             + Add Card
           </button>
+        )}
+
+        {warningBoardReset && (
+          <ResetWarningModal
+            boardName={board.title}
+            handleResetConfirm={handleResetConfirm}
+            handleCancel={handleCancel}
+          />
         )}
       </div>
     </div>

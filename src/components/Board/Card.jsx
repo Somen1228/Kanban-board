@@ -163,15 +163,17 @@ function Card({
           className="title-option-menu absolute h-auto w-32 bg-white drop-shadow-md top-6 right-2 z-30 flex flex-col items-start justify-around rounded-lg"
         >
           {title !== "To-do" && title !== "In-Progress" && title !== "Done" && (
-            <p
-              className="p-2 hover:bg-gray-100 w-full cursor-pointer rounded-t-lg"
-              onClick={handleDeleteCard}
-            >
-              Delete Card
-            </p>
+            <>
+              <p
+                className="p-2 hover:bg-gray-100 w-full cursor-pointer rounded-t-lg"
+                onClick={handleDeleteCard}
+              >
+                Delete Card
+              </p>
+            </>
           )}
           <p
-            className="p-2 hover:bg-gray-100 w-full cursor-pointer rounded-b-lg"
+            className="p-2 hover:bg-gray-100 hover:rounded-lg w-full cursor-pointer rounded-lg"
             onClick={deleteAllTasks}
           >
             Delete All Tasks
@@ -256,7 +258,9 @@ function Card({
                         </h4>
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => startEditingTask(task.id, task.value)}
+                            onClick={() =>
+                              startEditingTask(task.id, task.value)
+                            }
                             className="text-gray-400 hover:text-blue-500"
                           >
                             <img

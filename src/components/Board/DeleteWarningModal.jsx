@@ -1,5 +1,4 @@
-import React from "react";
-
+import ReactDOM from "react-dom";
 
 function DeleteWarningModal({index, updateCardTasks, setShowDeleteWarning}) {
 
@@ -11,7 +10,7 @@ function DeleteWarningModal({index, updateCardTasks, setShowDeleteWarning}) {
         setShowDeleteWarning(false);
     }
 
-  return (
+  return ReactDOM.createPortal(
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded shadow-lg z-60">
               <h2 className="text-lg font-semibold mb-4">Delete All Tasks</h2>
@@ -37,7 +36,8 @@ function DeleteWarningModal({index, updateCardTasks, setShowDeleteWarning}) {
                   </button>
               </div>
           </div>
-      </div>
+      </div>,
+      document.body
   )
 }
 

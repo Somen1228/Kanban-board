@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { generateTaskID } from "../../utils/taskIdGenerator";
 import pencilLogo from "../../assets/pencil.svg";
 import "./DropArea.css";
+import DeleteWarningModal from "./DeleteWarningModal.jsx";
 
 function Card({
   index,
@@ -28,6 +29,7 @@ function Card({
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const menuTriggerRef = useRef(null);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
@@ -102,9 +104,11 @@ function Card({
     setToggleMenu(false);
   };
 
+
+
   const deleteAllTasks = () => {
     setToggleMenu(false);
-    updateCardTasks(index, {});
+    setShowDeleteWarning(true);
   };
 
   useEffect(() => {
@@ -320,6 +324,14 @@ function Card({
         >
           + Create Task
         </div>
+      )}
+
+      {showDeleteWarning && (
+        <DeleteWarningModal
+            index={index}
+            updateCardTasks={updateCardTasks}
+            setShowDeleteWarning={setShowDeleteWarning}
+        />
       )}
     </div>
   );

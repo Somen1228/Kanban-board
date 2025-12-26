@@ -3,6 +3,7 @@ import { generateTaskID } from "../../utils/taskIdGenerator";
 import pencilLogo from "../../assets/pencil.svg";
 import "./DropArea.css";
 import DeleteWarningModal from "./DeleteWarningModal.jsx";
+import DefaultModal from "./DefaultModal.jsx";
 
 function Card({
   index,
@@ -30,6 +31,8 @@ function Card({
   const menuRef = useRef(null);
   const menuTriggerRef = useRef(null);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+  const [toDelete, setToDelete] = useState("");
+  const [defaultModal, setDefaultModal] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
@@ -100,15 +103,15 @@ function Card({
   };
 
   const handleDeleteCard = () => {
-    updateCards((prevCards) => prevCards.filter((card, i) => i !== index));
     setToggleMenu(false);
+    setToDelete("card");
+    setShowDeleteWarning(true);
   };
-
-
 
   const deleteAllTasks = () => {
     setToggleMenu(false);
-    setShowDeleteWarning(true);
+    setToDelete("tasks");
+    Object.keys(tasks).length > 0 ? setShowDeleteWarning(true) : setDefaultModal(true);
   };
 
   useEffect(() => {
@@ -331,8 +334,17 @@ function Card({
             index={index}
             updateCardTasks={updateCardTasks}
             setShowDeleteWarning={setShowDeleteWarning}
+            toDelete={toDelete}
+            updateCards={updateCards}
         />
       )}
+
+      {defaultModal && (
+          <DefaultModal
+            setDefaultModal={setDefaultModal}
+          />
+      )}
+
     </div>
   );
 }

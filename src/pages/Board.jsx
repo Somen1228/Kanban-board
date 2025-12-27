@@ -245,7 +245,7 @@ function Board() {
                 </button>
                 <h1 className="text-3xl font-bold">
                   {boards.find((board) => board.id === activeBoard)?.title}
-                </h1>
+                </h1 >
               </div>
               <div className="flex justify-center items-center">
                 <div className="flex items-center border rounded-3xl px-2 py-1 mr-5">

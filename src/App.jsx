@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import Board from "./pages/Board";
-import Login from "./pages/Login"
+import Login from "./pages/Login";
+import "./App.css";
 
 function App() {
   const [session, setSession] = useState(null);

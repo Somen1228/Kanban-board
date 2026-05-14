@@ -4,15 +4,18 @@ import {
   VscGithubInverted,
   VscLayoutSidebarLeft,
   VscLayoutSidebarLeftOff,
+  VscSignOut,
 } from "react-icons/vsc";
 import Cards from "../components/Board/Cards";
 import { CardsContext } from "../contexts/CardsContext";
+import { useAuth } from "../contexts/AuthContext";
 import optionLineLogo from "../assets/option-line.svg";
 import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
 
 function Board() {
   const { boards, setBoards, defaultCards } = useContext(CardsContext);
+  const { user, logout } = useAuth();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [newBoardTitle, setNewBoardTitle] = useState("");
@@ -280,6 +283,31 @@ function Board() {
                   >
                     <VscGithubInverted />
                   </a>
+                </div>
+                {/* User Profile & Logout */}
+                <div className="flex items-center gap-3 ml-2">
+                  {user?.photoUrl ? (
+                    <img
+                      src={user.photoUrl}
+                      alt={user.displayName || 'User'}
+                      className="w-8 h-8 rounded-full border-2 border-gray-200 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-bold">
+                      {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm text-gray-600 font-medium hidden sm:block max-w-[120px] truncate">
+                    {user?.displayName || user?.email || user?.phone || 'User'}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="text-gray-400 hover:text-red-500 transition-colors duration-200"
+                    title="Sign Out"
+                  >
+                    <VscSignOut className="text-lg" />
+                  </button>
                 </div>
               </div>
             </div>

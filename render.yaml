@@ -1,0 +1,28 @@
+databases:
+  - name: kandoo-db
+    plan: free
+    databaseName: kandoo
+    user: kandoo
+    region: oregon
+
+services:
+  - type: web
+    name: kandoo-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kandoo-db
+          property: connectionString
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

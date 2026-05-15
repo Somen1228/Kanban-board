@@ -42,7 +42,7 @@ const start = async () => {
   try {
     // Test database connection
     await sequelize.authenticate();
-    console.log('✅ MySQL database connected successfully');
+    console.log('✅ Database connected successfully');
 
     // Sync models (creates tables if they don't exist)
     await sequelize.sync({ alter: true });

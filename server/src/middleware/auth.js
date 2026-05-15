@@ -4,7 +4,7 @@ import User from '../models/User.js';
 /**
  * Authentication middleware
  * Verifies Firebase ID token from Authorization header
- * Creates/updates user in MySQL on first login
+ * Creates/updates user in the database on first login
  * Attaches user to req.user
  */
 const authenticate = async (req, res, next) => {

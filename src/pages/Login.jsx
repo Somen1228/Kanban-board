@@ -18,6 +18,7 @@ function Login() {
   const [activeTab, setActiveTab] = useState('google');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Email form state
   const [emailForm, setEmailForm] = useState({ email: '', password: '', displayName: '' });
@@ -38,7 +39,7 @@ function Login() {
     setLoading(true);
     clearError();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(rememberMe);
     } catch (err) {
       // error is set by AuthContext
     } finally {
@@ -52,9 +53,9 @@ function Login() {
     clearError();
     try {
       if (isSignUp) {
-        await signUpWithEmail(emailForm.email, emailForm.password, emailForm.displayName);
+        await signUpWithEmail(emailForm.email, emailForm.password, emailForm.displayName, rememberMe);
       } else {
-        await signInWithEmail(emailForm.email, emailForm.password);
+        await signInWithEmail(emailForm.email, emailForm.password, rememberMe);
       }
     } catch (err) {
       // error is set by AuthContext
@@ -70,7 +71,7 @@ function Login() {
     setPhoneSuccess('');
     try {
       const fullNumber = phoneForm.countryCode + phoneForm.phoneNumber;
-      await sendPhoneOtp(fullNumber, 'recaptcha-container');
+      await sendPhoneOtp(fullNumber, 'recaptcha-container', rememberMe);
       setOtpStep(true);
       setPhoneSuccess('OTP sent successfully!');
     } catch (err) {
@@ -153,6 +154,17 @@ function Login() {
             <span>{formatError(error)}</span>
           </div>
         )}
+
+        {/* Remember Me */}
+        <label className="remember-me" id="remember-me-toggle">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
+          <span className="remember-me-checkmark"></span>
+          <span className="remember-me-text">Remember me</span>
+        </label>
 
         {/* Google Panel */}
         {activeTab === 'google' && (

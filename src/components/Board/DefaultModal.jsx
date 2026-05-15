@@ -10,10 +10,11 @@ function DefaultModal({ setDefaultModal }) {
     }, []);
 
     return ReactDOM.createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'var(--theme-bg-overlay)' }}>
             <div
-                className={`bg-white w-[22rem] rounded-xl shadow-2xl p-6 transform transition-all duration-300
+                className={`w-[22rem] rounded-xl shadow-2xl p-6 transform transition-all duration-300
         ${animateIn ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
+                style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}
             >
                 {/* icon */}
                 <div className="flex justify-center mb-3">
@@ -21,10 +22,10 @@ function DefaultModal({ setDefaultModal }) {
                 </div>
 
                 {/* text */}
-                <h2 className="text-lg font-semibold text-center text-gray-800">
+                <h2 className="text-lg font-semibold text-center" style={{ color: 'var(--theme-text-primary)' }}>
                     Card is empty
                 </h2>
-                <p className="text-sm text-gray-500 text-center mt-1">
+                <p className="text-sm text-center mt-1" style={{ color: 'var(--theme-text-secondary)' }}>
                     There are no tasks to delete in this card.
                 </p>
 
@@ -32,8 +33,8 @@ function DefaultModal({ setDefaultModal }) {
                 <div className="flex justify-center mt-6">
                     <button
                         onClick={() => setDefaultModal(false)}
-                        className="px-6 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium
-                       hover:bg-gray-800 active:scale-95 transition"
+                        className="px-6 py-2 rounded-lg text-white text-sm font-medium active:scale-95 transition"
+                        style={{ background: 'var(--theme-accent)' }}
                     >
                         Go back
                     </button>

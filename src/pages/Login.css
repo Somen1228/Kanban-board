@@ -141,6 +141,49 @@
 .phone-step-text .step-num { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #6d28d9); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
 .back-btn { background: none; border: none; color: rgba(255, 255, 255, 0.5); font-size: 13px; cursor: pointer; padding: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 4px; font-family: inherit; transition: color 0.2s; }
 .back-btn:hover { color: rgba(255, 255, 255, 0.8); }
+/* Remember Me checkbox */
+.remember-me {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; margin-bottom: 20px;
+  -webkit-user-select: none; user-select: none;
+  position: relative;
+}
+.remember-me input {
+  position: absolute; opacity: 0; cursor: pointer;
+  height: 0; width: 0;
+}
+.remember-me-checkmark {
+  width: 18px; height: 18px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.remember-me-checkmark::after {
+  content: '';
+  width: 4px; height: 8px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+  margin-top: -1px;
+}
+.remember-me input:checked ~ .remember-me-checkmark {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-color: #7c3aed;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
+}
+.remember-me input:checked ~ .remember-me-checkmark::after {
+  transform: rotate(45deg) scale(1);
+}
+.remember-me:hover .remember-me-checkmark {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.remember-me-text {
+  font-size: 13px; color: rgba(255, 255, 255, 0.55);
+  font-weight: 400; letter-spacing: 0.2px;
+}
 @media (max-width: 480px) {
   .login-card { margin: 16px; padding: 32px 24px; }
   .otp-input { width: 42px; height: 50px; font-size: 20px; }

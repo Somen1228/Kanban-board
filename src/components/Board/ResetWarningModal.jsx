@@ -33,11 +33,12 @@ function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
   }, []);
 
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'var(--theme-bg-overlay)' }}>
         <div
             ref={modalRef}
-            className={`bg-white w-[26rem] rounded-xl shadow-2xl p-6 transform transition-all duration-300
+            className={`w-[26rem] rounded-xl shadow-2xl p-6 transform transition-all duration-300
         ${animateIn ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
+            style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}
         >
           {/* icon */}
           <div className="flex justify-center mb-3">
@@ -45,19 +46,22 @@ function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
           </div>
 
           {/* title */}
-          <h2 className="text-lg font-semibold text-center text-gray-800">
+          <h2 className="text-lg font-semibold text-center" style={{ color: 'var(--theme-text-primary)' }}>
             Reset Board
           </h2>
 
           {/* description */}
-          <p className="text-sm text-gray-500 text-center mt-2">
+          <p className="text-sm text-center mt-2" style={{ color: 'var(--theme-text-secondary)' }}>
             This will permanently remove all cards and tasks from the board.
           </p>
 
           {/* instruction */}
-          <p className="text-sm text-gray-600 mt-4">
+          <p className="text-sm mt-4" style={{ color: 'var(--theme-text-secondary)' }}>
             To confirm, type{" "}
-            <span className="text-red-500 font-medium bg-gray-100 px-2 py-1 rounded-md">
+            <span className="font-medium px-2 py-1 rounded-md" style={{
+              color: 'var(--theme-danger)',
+              background: 'var(--theme-danger-bg)',
+            }}>
             reset {boardName}
           </span>{" "}
             below.
@@ -68,7 +72,12 @@ function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
               type="text"
               value={inputValue}
               onChange={handleChange}
-              className="mt-3 border border-gray-300 p-2 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-red-400"
+              className="mt-3 p-2 w-full rounded-md focus:outline-none focus:ring-2"
+              style={{
+                background: 'var(--theme-bg-input)',
+                border: '1px solid var(--theme-border)',
+                color: 'var(--theme-text-primary)',
+              }}
               placeholder={`reset ${boardName}`}
           />
 
@@ -76,20 +85,19 @@ function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
           <div className="flex justify-end gap-3 mt-6">
             <button
                 onClick={handleCancel}
-                className="px-5 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm font-medium
-                       hover:bg-gray-300 transition"
+                className="px-5 py-2 rounded-lg text-sm font-medium transition"
+                style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-primary)' }}
             >
               Cancel
             </button>
 
             <button
                 onClick={handleReset}
-                className={`px-5 py-2 rounded-lg text-white text-sm font-medium transition
-              ${
-                    inputValue === `reset ${boardName}`
-                        ? "bg-red-500 hover:bg-red-600 active:scale-95"
-                        : "bg-red-300 cursor-not-allowed"
-                }`}
+                className={`px-5 py-2 rounded-lg text-white text-sm font-medium transition`}
+                style={{
+                  background: inputValue === `reset ${boardName}` ? 'var(--theme-danger)' : 'var(--theme-danger-light)',
+                  cursor: inputValue === `reset ${boardName}` ? 'pointer' : 'not-allowed',
+                }}
             >
               Reset
             </button>

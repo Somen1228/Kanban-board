@@ -28,16 +28,19 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div ref={modalRef} className="bg-white p-6 rounded shadow-lg z-60">
-        <h2 className="text-lg font-semibold mb-4">Delete Board</h2>
-        <p className="mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--theme-bg-overlay)' }}>
+      <div ref={modalRef} className="p-6 rounded shadow-lg z-60" style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}>
+        <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--theme-text-primary)' }}>Delete Board</h2>
+        <p className="mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
           Are you sure you want to delete this board? This action cannot be
           undone.{" "}
         </p>
-        <p className=" mb-2">
+        <p className="mb-2" style={{ color: 'var(--theme-text-secondary)' }}>
           To confirm, type{" "}
-          <span className="text-red-500 font-medium bg-gray-300 bg-opacity-25 px-2 py-1 rounded-md">
+          <span className="font-medium px-2 py-1 rounded-md" style={{
+            color: 'var(--theme-danger)',
+            background: 'var(--theme-danger-bg)',
+          }}>
             delete {boardName}
           </span>{" "}
           below.
@@ -46,18 +49,25 @@ function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
           type="text"
           value={inputValue}
           onChange={handleChange}
-          className={`border p-2 w-full mb-4 drop-shadow-sm`}
+          className={`p-2 w-full mb-4 drop-shadow-sm rounded`}
+          style={{
+            background: 'var(--theme-bg-input)',
+            border: '1px solid var(--theme-border)',
+            color: 'var(--theme-text-primary)',
+          }}
         />
         <div className="flex justify-end">
           <button
             onClick={onCancel}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
+            className="font-bold py-2 px-4 rounded mr-2 transition"
+            style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-primary)' }}
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            className="text-white font-bold py-2 px-4 rounded transition"
+            style={{ background: 'var(--theme-danger)' }}
           >
             Delete
           </button>

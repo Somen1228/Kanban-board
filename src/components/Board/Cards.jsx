@@ -8,10 +8,8 @@ import React, {
 import Card from "./Card";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
-import { VscHistory, VscListFilter } from "react-icons/vsc";
-import WarningModal from "./WarningModal";
+import { VscHistory } from "react-icons/vsc";
 import ResetWarningModal from "./ResetWarningModal";
-import { BiReset } from "react-icons/bi";
 
 function Cards({ boardId, searchTerm }) {
   const { boards, setBoards, defaultCards } = useContext(CardsContext);
@@ -19,7 +17,6 @@ function Cards({ boardId, searchTerm }) {
   const [toggleModal, setToggleModal] = useState(false);
   const modalRef = useRef(null);
   const [draggedTask, setDraggedTask] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("");
   const [warningBoardReset, setWarningBoardReset] = useState(false);
 
   const addCard = useCallback(
@@ -142,18 +139,6 @@ function Cards({ boardId, searchTerm }) {
     setDraggedTask(null);
   };
 
-  const handleColorFilterChange = (e) => {
-    setSelectedColor(e.target.value);
-  };
-
-  const uniqueColors = [
-    ...new Set(board.cards.map((card) => card.color.trim())),
-  ];
-
-  const filteredCards = selectedColor
-    ? board.cards.filter((card) => card.color === selectedColor)
-    : board.cards;
-
   const resetBoard = () => {
     setBoards((prev) => {
       const updatedBoards = prev.map((b) => {
@@ -185,31 +170,14 @@ function Cards({ boardId, searchTerm }) {
   return (
     <div>
       <div className="pl-10 option-container mb-4 w-auto ">
-        <div className="flex items-center justify-between">
-          <div className="filter-board flex items-center" title="Filter cards by color">
-            <label htmlFor="colorFilter">
-              <VscListFilter />
-            </label>
-            <select
-              id="colorFilter"
-              value={selectedColor}
-              onChange={handleColorFilterChange}
-            >
-              <option value="">All</option>
-              {uniqueColors.map((color, index) => (
-                <option key={index} value={color}>
-                  {color.charAt(3).toUpperCase() + color.slice(4, -4)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="reset-board text-xl mr-5">
+        <div className="flex items-center justify-end">
+          <div className="reset-board text-xl mr-5" style={{ color: 'var(--theme-text-secondary)' }}>
             <button onClick={handleResetClick} title="Reset board to default"><VscHistory /></button>
           </div>
         </div>
       </div>
       <div className="container pl-10">
-        {filteredCards.map((card, cardIndex) => (
+        {board.cards.map((card, cardIndex) => (
           <Card
             key={cardIndex}
             index={cardIndex}

@@ -9,6 +9,9 @@ import {
   onAuthStateChanged,
   signOut,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
@@ -80,10 +83,17 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  // Set persistence based on "Remember Me" preference
+  const applyPersistence = async (rememberMe) => {
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(auth, persistence);
+  };
+
   // Google Sign-In
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (rememberMe = true) => {
     setError(null);
     try {
+      await applyPersistence(rememberMe);
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       return result.user;
@@ -94,9 +104,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Email Sign-Up
-  const signUpWithEmail = async (email, password, displayName) => {
+  const signUpWithEmail = async (email, password, displayName, rememberMe = true) => {
     setError(null);
     try {
+      await applyPersistence(rememberMe);
       const result = await createUserWithEmailAndPassword(auth, email, password);
       if (displayName) {
         await updateProfile(result.user, { displayName });
@@ -109,9 +120,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Email Sign-In
-  const signInWithEmail = async (email, password) => {
+  const signInWithEmail = async (email, password, rememberMe = true) => {
     setError(null);
     try {
+      await applyPersistence(rememberMe);
       const result = await signInWithEmailAndPassword(auth, email, password);
       return result.user;
     } catch (err) {
@@ -121,9 +133,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Phone Sign-In — Step 1: Send OTP
-  const sendPhoneOtp = async (phoneNumber, recaptchaContainerId) => {
+  const sendPhoneOtp = async (phoneNumber, recaptchaContainerId, rememberMe = true) => {
     setError(null);
     try {
+      await applyPersistence(rememberMe);
+
       // Clean up existing reCAPTCHA verifier
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();

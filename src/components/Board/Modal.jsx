@@ -45,31 +45,44 @@ const Modal = forwardRef(({ addCard, cards }, ref) => {
   }, [cardTitle, selectedColor]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-20">
-      <div ref={ref} className="bg-white px-4 pt-4 rounded shadow-lg w-80">
+    <div className="fixed inset-0 flex items-center justify-center z-20" style={{ background: 'var(--theme-bg-overlay)' }}>
+      <div ref={ref} className="px-4 pt-4 rounded shadow-lg w-80" style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}>
         <input
-          className="w-full h-10 resize-none bg-white text-sm p-2 rounded-md drop-shadow-lg border-gray-300 focus:outline-none focus:border-gray-500 placeholder-gray-400 font-normal"
+          className="w-full h-10 resize-none text-sm p-2 rounded-md drop-shadow-lg focus:outline-none font-normal"
+          style={{
+            background: 'var(--theme-bg-input)',
+            color: 'var(--theme-text-primary)',
+            border: '1px solid var(--theme-border)',
+          }}
           placeholder="Enter the card title..."
           value={cardTitle}
           onChange={handleNewCardName}
         />
         {showDuplicateWarning && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-2" role="alert">
-            <span className="block sm:inline">
+          <div className="px-4 py-3 rounded relative mt-2" role="alert" style={{
+            background: 'var(--theme-danger-bg)',
+            border: '1px solid var(--theme-danger)',
+            color: 'var(--theme-danger)',
+          }}>
+            <span className="block sm:inline text-sm">
                 The name '{cardTitle}' is either invalid or already in use on this board. Please provide a unique and valid name for your card.
             </span>
           </div>
         )}
         {showColorWarning && !selectedColor && (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mt-2 flex gap-2" role="alert">
+          <div className="px-4 py-3 rounded relative mt-2 flex gap-2" role="alert" style={{
+            background: 'rgba(234,179,8,0.12)',
+            border: '1px solid var(--theme-warning)',
+            color: 'var(--theme-warning)',
+          }}>
             <img width="20" height="20" src="https://img.icons8.com/emoji/48/warning-emoji.png" alt="warning-emoji"/>
-            <span className="block sm:inline">
+            <span className="block sm:inline text-sm">
               Please select a priority color.
             </span>
           </div>
         )}
         <div className="flex flex-col items-center mt-4">
-          <p className="text-gray-600 text-sm font-medium">Select a priority color</p>
+          <p className="text-sm font-medium" style={{ color: 'var(--theme-text-secondary)' }}>Select a priority color</p>
           <div className="flex pt-2 space-x-3">
             <div
               className={`priority-colors bg-pink-200 hover:ring-2 hover:ring-pink-500 ${selectedColor === "bg-pink-200" ? "ring-2 ring-pink-500" : ""}`}
@@ -99,7 +112,8 @@ const Modal = forwardRef(({ addCard, cards }, ref) => {
           <div className="mt-4 w-full flex justify-end">
             <button
               onClick={handleAddCard}
-              className={`w-full h-10 ${selectedColor} text-black font-medium rounded-t-md hover:bg-opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`w-full h-10 ${selectedColor} font-medium rounded-t-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+              style={{ color: 'var(--theme-text-primary)' }}
               disabled={!cardTitle || !selectedColor || showDuplicateWarning}
             >
               Add Card

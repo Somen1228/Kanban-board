@@ -7,10 +7,16 @@ import { boardsApi } from '../services/api';
 export const CardsContext = createContext();
 
 const defaultCards = [
-  { title: "To-do", color: "bg-gray-200", isVisible: true, tasks: {} },
-  { title: "In-Progress", color: "bg-blue-100", isVisible: true, tasks: {} },
-  { title: "Done", color: "bg-green-100", isVisible: true, tasks: {} },
+  { uid: 'col-todo', title: "To-do", color: "bg-gray-200", isVisible: true, tasks: {} },
+  { uid: 'col-inprogress', title: "In-Progress", color: "bg-blue-100", isVisible: true, tasks: {} },
+  { uid: 'col-done', title: "Done", color: "bg-green-100", isVisible: true, tasks: {} },
 ];
+
+const ensureCardUids = (boards) =>
+  boards.map(b => ({
+    ...b,
+    cards: b.cards.map(c => c.uid ? c : { ...c, uid: uuidv4() }),
+  }));
 
 const WAKE_UP_DELAY_MS = 2000;
 const SYNC_DEBOUNCE_MS = 1000;
@@ -42,7 +48,7 @@ export const CardsProvider = ({ children }) => {
         try {
           const apiBoards = await boardsApi.getAll();
           if (apiBoards && apiBoards.length > 0) {
-            setBoards(apiBoards);
+            setBoards(ensureCardUids(apiBoards));
           } else {
             const defaultBoard = {
               id: uuidv4(),
@@ -60,7 +66,7 @@ export const CardsProvider = ({ children }) => {
           console.error('Failed to load boards:', err);
           const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
           if (localBoards.length > 0) {
-            setBoards(localBoards);
+            setBoards(ensureCardUids(localBoards));
             toast.warning('Loaded offline copy — backend unreachable');
           } else {
             setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
@@ -71,7 +77,7 @@ export const CardsProvider = ({ children }) => {
       } else {
         const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
         if (localBoards.length > 0) {
-          setBoards(localBoards);
+          setBoards(ensureCardUids(localBoards));
         } else {
           setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
         }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { THEME_TOKENS } from '../themes/themes';
 import './ThemeSettings.css';
+import { IoColorFilterOutline } from "react-icons/io5";
 
 function ThemeSettings({ onClose }) {
   const {
@@ -82,7 +83,10 @@ function ThemeSettings({ onClose }) {
       <div className="theme-settings-panel" ref={panelRef}>
         {/* Header */}
         <div className="ts-header">
-          <h2>🎨 Theme Settings</h2>
+        <h2 className="flex items-center gap-2">
+          <IoColorFilterOutline />
+          Theme Settings
+        </h2>
           <button className="ts-close" onClick={onClose}>✕</button>
         </div>
 

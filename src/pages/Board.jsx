@@ -1,6 +1,7 @@
 import { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
+import { useHotkeys } from "react-hotkeys-hook";
 import {
   VscGithubInverted,
   VscSignOut,
@@ -17,11 +18,13 @@ import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
 import BoardSkeleton from "../components/Board/BoardSkeleton";
 import ThemeSettings from "../components/ThemeSettings";
+import ShortcutsHelpModal from "../components/ShortcutsHelpModal";
+import ContextMenu from "../components/ContextMenu";
 
 function Board() {
   const { boards, setBoards, defaultCards, isLoaded, wakingUp } = useContext(CardsContext);
   const { user, logout } = useAuth();
-  const { currentThemeId } = useTheme();
+  const { currentThemeId, allThemes, setTheme } = useTheme();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [newBoardTitle, setNewBoardTitle] = useState("");
@@ -34,9 +37,61 @@ function Board() {
   const [isSidebarPinned, setIsSidebarPinned] = useState(false);
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [quickAddSignal, setQuickAddSignal] = useState(0);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const dropdownRefs = useRef({});
   const triggerRefs = useRef({});
   const sidebarRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // ===== Keyboard shortcuts =====
+  // Cmd/Ctrl+K and / focus the search bar
+  useHotkeys('mod+k, /', (e) => {
+    e.preventDefault();
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  }, { enableOnFormTags: ['input', 'textarea'], preventDefault: true });
+
+  // T cycles to the next theme (only when no input is focused)
+  useHotkeys('t', () => {
+    if (!allThemes.length) return;
+    const idx = allThemes.findIndex((t) => t.id === currentThemeId);
+    const next = allThemes[(idx + 1) % allThemes.length];
+    setTheme(next.id);
+  });
+
+  // ? opens shortcuts help
+  useHotkeys('?', () => setShowShortcutsHelp(true));
+
+  // N adds a quick task to the active board's first card
+  useHotkeys('n', (e) => {
+    e.preventDefault();
+    setQuickAddSignal((s) => s + 1);
+  });
+
+  // Esc closes any open Board-level overlay
+  useHotkeys('esc', () => {
+    if (ctxMenu) { setCtxMenu(null); return; }
+    if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
+    if (showThemeSettings) { setShowThemeSettings(false); return; }
+    if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
+    if (editingBoardId) { setEditingBoardId(null); return; }
+    if (dropdownBoardId) { setDropdownBoardId(null); return; }
+  }, { enableOnFormTags: ['input'] });
+
+  const openBoardContextMenu = (e, board) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const items = [
+      { label: "Rename board", icon: "✏️", onClick: () => handleTitleClick(board.id, board.title) },
+    ];
+    if (boards.length > 1) {
+      items.push({ divider: true });
+      items.push({ label: "Delete board", icon: "🗑", danger: true, onClick: () => handleDeleteClick(board) });
+    }
+    setCtxMenu({ x: e.clientX, y: e.clientY, items });
+  };
 
   const addBoard = () => {
     const newBoardId = uuidv4();
@@ -178,6 +233,7 @@ function Board() {
                         : { color: 'var(--theme-text-secondary)' }
                     }
                     onClick={() => setActiveBoard(board.id)}
+                    onContextMenu={(e) => openBoardContextMenu(e, board)}
                   >
                     {editingBoardId === board.id ? (
                       <div className="relative w-full">
@@ -301,12 +357,13 @@ function Board() {
                     />
                   </svg>
                   <input
+                    ref={searchInputRef}
                     className="ml-2 text-md outline-none bg-transparent"
                     style={{ color: 'var(--theme-text-primary)' }}
                     type="text"
                     name="search"
                     id="search"
-                    placeholder="Search..."
+                    placeholder="Search (⌘K or /)"
                     value={searchTerm}
                     onChange={handleSearch}
                   />
@@ -377,6 +434,7 @@ function Board() {
                         key={board.id}
                         boardId={board.id}
                         searchTerm={searchTerm}
+                        quickAddSignal={quickAddSignal}
                       />
                     )
                 )
@@ -394,6 +452,17 @@ function Board() {
       )}
       {showThemeSettings && (
         <ThemeSettings onClose={() => setShowThemeSettings(false)} />
+      )}
+      {showShortcutsHelp && (
+        <ShortcutsHelpModal onClose={() => setShowShortcutsHelp(false)} />
+      )}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </div>
   );

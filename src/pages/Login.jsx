@@ -159,8 +159,8 @@ function Login() {
       <div className="login-card">
         <div className="login-logo">
           <img src={kandooLogo} alt="KanDoo" className="login-logo-img" />
-          <h1>KanDoo</h1>
-          <p>Calm, focused task management</p>
+          <h1>Kandoo</h1>
+          <p>Plan It Like You Kan, Do It Like You Do.</p>
         </div>
 
         {/* Auth Method Tabs */}
@@ -171,9 +171,9 @@ function Login() {
           <button className={`auth-tab ${activeTab === 'email' ? 'active' : ''}`} onClick={() => handleTabChange('email')}>
             Email
           </button>
-          <button className={`auth-tab ${activeTab === 'phone' ? 'active' : ''}`} onClick={() => handleTabChange('phone')}>
+          {/* <button className={`auth-tab ${activeTab === 'phone' ? 'active' : ''}`} onClick={() => handleTabChange('phone')}>
             Phone
-          </button>
+          </button> */}
         </div>
 
         {/* Error Display */}
@@ -235,7 +235,7 @@ function Login() {
           </div>
         )}
 
-        {/* Phone Panel */}
+        {/* Phone Panel
         {activeTab === 'phone' && (
           <div className="auth-panel" key="phone">
             {!otpStep ? (
@@ -287,7 +287,7 @@ function Login() {
               </>
             )}
           </div>
-        )}
+        )} */}
 
         {/* reCAPTCHA container (invisible) */}
         <div id="recaptcha-container"></div>

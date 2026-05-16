@@ -2,8 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import sequelize from './config/database.js';
+import User from './models/User.js';
+import Board from './models/Board.js';
+import Feedback from './models/Feedback.js';
 import authRoutes from './routes/auth.js';
 import boardRoutes from './routes/boards.js';
+import feedbackRoutes from './routes/feedback.js';
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +35,7 @@ app.use(express.json({ limit: '10mb' }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/boards', boardRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

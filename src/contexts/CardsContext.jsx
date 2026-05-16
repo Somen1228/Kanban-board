@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
 import { boardsApi } from '../services/api';

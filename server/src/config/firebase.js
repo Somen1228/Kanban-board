@@ -10,7 +10,7 @@ let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } catch (error) {
+  } catch {
     console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT env var');
     process.exit(1);
   }

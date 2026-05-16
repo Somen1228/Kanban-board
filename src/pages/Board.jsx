@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+import { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
   VscGithubInverted,

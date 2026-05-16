@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { generateTaskID } from "../../utils/taskIdGenerator";
 import { useTheme } from "../../contexts/ThemeContext";
 import pencilLogo from "../../assets/pencil.svg";
-import "./DropArea.css";
 import DeleteWarningModal from "./DeleteWarningModal.jsx";
 import DefaultModal from "./DefaultModal.jsx";
 
@@ -37,7 +36,6 @@ function Card({
   updateCardTasks,
   updateCards,
   searchTerm,
-  cards,
   onDragStart,
   onDragOver,
   onDrop,
@@ -50,7 +48,6 @@ function Card({
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskValue, setEditingTaskValue] = useState("");
   const [doneTasks, setDoneTasks] = useState({});
-  const [isComingOver, setIsComingOver] = useState(false);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const menuTriggerRef = useRef(null);
@@ -178,7 +175,6 @@ function Card({
   };
 
   const handleDrop = (e, targetTaskIndex) => {
-    setIsComingOver(false);
     onDrop(e, targetTaskIndex);
   };
 
@@ -263,8 +259,8 @@ function Card({
         <ul>
           {Object.values(tasks).length > 0 ? (
             Object.values(tasks).map((task, taskIndex) => (
-              <React.Fragment key={task.id}>
-                <li
+              <li
+                  key={task.id}
                   className={`task-item flex flex-col p-2 mt-2 shadow-sm rounded-md cursor-grab ${
                     doneTasks[task.id] ? "line-through" : ""
                   }`}
@@ -331,7 +327,7 @@ function Card({
                               className="hover:scale-125 hover:duration-400 hover:ease-in-out"
                               src={pencilLogo}
                               alt="Edit"
-                              style={{ filter: 'var(--theme-text-primary)' === '#1e293b' ? 'none' : 'invert(0.7)' }}
+                              style={{ filter: currentThemeId === 'light' ? 'none' : 'invert(0.7)' }}
                             />
                           </button>
                           <button
@@ -359,7 +355,6 @@ function Card({
                     </>
                   )}
                 </li>
-              </React.Fragment>
             ))
           ) : (
             <li

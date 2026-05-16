@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import themes, { themeToCSSVars, validateTheme } from '../themes/themes';
 
 const ThemeContext = createContext();
@@ -83,7 +83,7 @@ export const ThemeProvider = ({ children }) => {
   const exportTheme = (id) => {
     const theme = allThemes.find((t) => t.id === id);
     if (!theme) return null;
-    const { isCustom, ...exportData } = theme;
+    const { isCustom: _isCustom, ...exportData } = theme;
     return JSON.stringify(exportData, null, 2);
   };
 

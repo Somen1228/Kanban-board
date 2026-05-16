@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
@@ -40,7 +40,7 @@ function Login() {
     clearError();
     try {
       await signInWithGoogle(rememberMe);
-    } catch (err) {
+    } catch {
       // error is set by AuthContext
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ function Login() {
       } else {
         await signInWithEmail(emailForm.email, emailForm.password, rememberMe);
       }
-    } catch (err) {
+    } catch {
       // error is set by AuthContext
     } finally {
       setLoading(false);
@@ -74,7 +74,7 @@ function Login() {
       await sendPhoneOtp(fullNumber, 'recaptcha-container', rememberMe);
       setOtpStep(true);
       setPhoneSuccess('OTP sent successfully!');
-    } catch (err) {
+    } catch {
       // error is set by AuthContext
     } finally {
       setLoading(false);
@@ -88,7 +88,7 @@ function Login() {
     try {
       const otpString = otp.join('');
       await verifyPhoneOtp(otpString);
-    } catch (err) {
+    } catch {
       // error is set by AuthContext
     } finally {
       setLoading(false);

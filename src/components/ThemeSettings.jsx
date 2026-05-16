@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { THEME_TOKENS } from '../themes/themes';
 import './ThemeSettings.css';
 
 function ThemeSettings({ onClose }) {
   const {
-    currentThemeId, allThemes, builtInThemes, customThemes,
+    currentThemeId, builtInThemes, customThemes,
     setTheme, addCustomTheme, removeCustomTheme, exportTheme,
   } = useTheme();
 
@@ -43,7 +43,7 @@ function ThemeSettings({ onClose }) {
       } else {
         setImportError(result.error);
       }
-    } catch (err) {
+    } catch {
       setImportError('Invalid JSON. Please check the format and try again.');
     }
   };

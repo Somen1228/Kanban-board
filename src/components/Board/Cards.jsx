@@ -1,4 +1,4 @@
-import React, {
+import {
   useState,
   useRef,
   useEffect,
@@ -188,7 +188,6 @@ function Cards({ boardId, searchTerm }) {
             updateCardTasks={updateCardTasks}
             updateCards={updateCards}
             searchTerm={searchTerm}
-            cards={board.cards}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={(e, targetTaskIndex) =>

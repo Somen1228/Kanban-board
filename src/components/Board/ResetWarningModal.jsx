@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
   const [inputValue, setInputValue] = useState("");

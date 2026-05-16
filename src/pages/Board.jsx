@@ -1,9 +1,9 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+import { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
+import { useHotkeys } from "react-hotkeys-hook";
 import {
   VscGithubInverted,
-  VscLayoutSidebarLeft,
-  VscLayoutSidebarLeftOff,
   VscSignOut,
 } from "react-icons/vsc";
 import { IoColorFilterOutline } from "react-icons/io5";
@@ -12,14 +12,19 @@ import { CardsContext } from "../contexts/CardsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import optionLineLogo from "../assets/option-line.svg";
+import kandooLogo from "../assets/kandoo-head.png";
+import kandooLogoSmiling from "../assets/kandoo-smiling.png";
 import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
+import BoardSkeleton from "../components/Board/BoardSkeleton";
 import ThemeSettings from "../components/ThemeSettings";
+import ShortcutsHelpModal from "../components/ShortcutsHelpModal";
+import ContextMenu from "../components/ContextMenu";
 
 function Board() {
-  const { boards, setBoards, defaultCards } = useContext(CardsContext);
+  const { boards, setBoards, defaultCards, isLoaded, wakingUp } = useContext(CardsContext);
   const { user, logout } = useAuth();
-  const { currentThemeId } = useTheme();
+  const { currentThemeId, allThemes, setTheme } = useTheme();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [newBoardTitle, setNewBoardTitle] = useState("");
@@ -29,10 +34,64 @@ function Board() {
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [quickAddSignal, setQuickAddSignal] = useState(0);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const dropdownRefs = useRef({});
   const triggerRefs = useRef({});
   const sidebarRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // ===== Keyboard shortcuts =====
+  // Cmd/Ctrl+K and / focus the search bar
+  useHotkeys('mod+k, /', (e) => {
+    e.preventDefault();
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  }, { enableOnFormTags: ['input', 'textarea'], preventDefault: true });
+
+  // T cycles to the next theme (only when no input is focused)
+  useHotkeys('t', () => {
+    if (!allThemes.length) return;
+    const idx = allThemes.findIndex((t) => t.id === currentThemeId);
+    const next = allThemes[(idx + 1) % allThemes.length];
+    setTheme(next.id);
+  });
+
+  // ? opens shortcuts help
+  useHotkeys('?', () => setShowShortcutsHelp(true));
+
+  // N adds a quick task to the active board's first card
+  useHotkeys('n', (e) => {
+    e.preventDefault();
+    setQuickAddSignal((s) => s + 1);
+  });
+
+  // Esc closes any open Board-level overlay
+  useHotkeys('esc', () => {
+    if (ctxMenu) { setCtxMenu(null); return; }
+    if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
+    if (showThemeSettings) { setShowThemeSettings(false); return; }
+    if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
+    if (editingBoardId) { setEditingBoardId(null); return; }
+    if (dropdownBoardId) { setDropdownBoardId(null); return; }
+  }, { enableOnFormTags: ['input'] });
+
+  const openBoardContextMenu = (e, board) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const items = [
+      { label: "Rename board", icon: "✏️", onClick: () => handleTitleClick(board.id, board.title) },
+    ];
+    if (boards.length > 1) {
+      items.push({ divider: true });
+      items.push({ label: "Delete board", icon: "🗑", danger: true, onClick: () => handleDeleteClick(board) });
+    }
+    setCtxMenu({ x: e.clientX, y: e.clientY, items });
+  };
 
   const addBoard = () => {
     const newBoardId = uuidv4();
@@ -157,7 +216,7 @@ function Board() {
           onMouseEnter={() => setIsSidebarOpen(true)}
           onMouseLeave={() => {
             setDropdownBoardId(null);
-            setIsSidebarOpen(false);
+            if (!isSidebarPinned) setIsSidebarOpen(false);
           }}
         >
           {isSidebarOpen && (
@@ -174,6 +233,7 @@ function Board() {
                         : { color: 'var(--theme-text-secondary)' }
                     }
                     onClick={() => setActiveBoard(board.id)}
+                    onContextMenu={(e) => openBoardContextMenu(e, board)}
                   >
                     {editingBoardId === board.id ? (
                       <div className="relative w-full">
@@ -250,19 +310,29 @@ function Board() {
         <div className="flex-grow overflow-auto">
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
                 <button
-                  className="mr-4 focus:outline-none"
-                  style={{ color: 'var(--theme-text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="mr-2 focus:outline-none transition-transform duration-200 hover:scale-110"
+                  onMouseEnter={() => setIsLogoHovered(true)}
+                  onMouseLeave={() => setIsLogoHovered(false)}
+                  onClick={() => {
+                    setIsSidebarPinned((prev) => {
+                      const next = !prev;
+                      setIsSidebarOpen(next);
+                      return next;
+                    });
+                  }}
+                  title={isSidebarPinned ? 'Click to unpin sidebar' : 'Click to pin sidebar open'}
+                  aria-label="Toggle sidebar"
+                  aria-pressed={isSidebarPinned}
                 >
-                  {isSidebarOpen ? (
-                    <VscLayoutSidebarLeft className="text-lg" />
-                  ) : (
-                    <VscLayoutSidebarLeftOff className="text-lg" />
-                  )}
+                  <img
+                    src={isLogoHovered ? kandooLogoSmiling : kandooLogo}
+                    alt="KanDoo"
+                    className="w-12 h-12 object-contain"
+                  />
                 </button>
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--theme-text-primary)' }}>
+                <h1 className="text-2xl sm:text-3xl font-bold truncate" style={{ color: 'var(--theme-text-primary)' }}>
                   {boards.find((board) => board.id === activeBoard)?.title}
                 </h1>
               </div>
@@ -287,12 +357,13 @@ function Board() {
                     />
                   </svg>
                   <input
+                    ref={searchInputRef}
                     className="ml-2 text-md outline-none bg-transparent"
                     style={{ color: 'var(--theme-text-primary)' }}
                     type="text"
                     name="search"
                     id="search"
-                    placeholder="Search..."
+                    placeholder="Search (⌘K or /)"
                     value={searchTerm}
                     onChange={handleSearch}
                   />
@@ -333,7 +404,14 @@ function Board() {
                     {user?.displayName || user?.email || user?.phone || 'User'}
                   </span>
                   <button
-                    onClick={logout}
+                    onClick={async () => {
+                      try {
+                        await logout();
+                        toast.success('Signed out');
+                      } catch {
+                        toast.error("Couldn't sign out — please try again");
+                      }
+                    }}
                     className="transition-colors duration-200"
                     style={{ color: 'var(--theme-text-muted)' }}
                     title="Sign Out"
@@ -346,15 +424,20 @@ function Board() {
               </div>
             </div>
             <div className="mt-6">
-              {boards.map(
-                (board) =>
-                  board.id === activeBoard && (
-                    <Cards
-                      key={board.id}
-                      boardId={board.id}
-                      searchTerm={searchTerm}
-                    />
-                  )
+              {!isLoaded ? (
+                <BoardSkeleton message={wakingUp ? 'Waking the server — this can take up to 30 seconds on the first request' : null} />
+              ) : (
+                boards.map(
+                  (board) =>
+                    board.id === activeBoard && (
+                      <Cards
+                        key={board.id}
+                        boardId={board.id}
+                        searchTerm={searchTerm}
+                        quickAddSignal={quickAddSignal}
+                      />
+                    )
+                )
               )}
             </div>
           </div>
@@ -369,6 +452,17 @@ function Board() {
       )}
       {showThemeSettings && (
         <ThemeSettings onClose={() => setShowThemeSettings(false)} />
+      )}
+      {showShortcutsHelp && (
+        <ShortcutsHelpModal onClose={() => setShowShortcutsHelp(false)} />
+      )}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </div>
   );

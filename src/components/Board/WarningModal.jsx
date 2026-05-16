@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 function WarningModal({ boardName, onDeleteConfirm, onCancel }) {
   const [inputValue, setInputValue] = useState("");

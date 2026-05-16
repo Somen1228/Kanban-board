@@ -1,10 +1,10 @@
-import React, { forwardRef, useEffect } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 const Modal = forwardRef(({ addCard, cards }, ref) => {
-  const [cardTitle, setCardTitle] = React.useState("");
-  const [selectedColor, setSelectedColor] = React.useState("");
-  const [showDuplicateWarning, setShowDuplicateWarning] = React.useState(false);
-  const [showColorWarning, setShowColorWarning] = React.useState(false);
+  const [cardTitle, setCardTitle] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [showColorWarning, setShowColorWarning] = useState(false);
 
   const handleAddCard = () => {
     if (cardTitle.trim() === "") {
@@ -65,7 +65,7 @@ const Modal = forwardRef(({ addCard, cards }, ref) => {
             color: 'var(--theme-danger)',
           }}>
             <span className="block sm:inline text-sm">
-                The name '{cardTitle}' is either invalid or already in use on this board. Please provide a unique and valid name for your card.
+                The name &quot;{cardTitle}&quot; is either invalid or already in use on this board. Please provide a unique and valid name for your card.
             </span>
           </div>
         )}
@@ -124,5 +124,7 @@ const Modal = forwardRef(({ addCard, cards }, ref) => {
     </div>
   );
 });
+
+Modal.displayName = "Modal";
 
 export default Modal;

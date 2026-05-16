@@ -6,6 +6,7 @@ import "./index.css";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { CardsProvider } from "./contexts/CardsContext.jsx";
+import KandooToaster from "./components/KandooToaster.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -14,6 +15,7 @@ createRoot(document.getElementById("root")).render(
         <AuthProvider>
           <CardsProvider>
             <App />
+            <KandooToaster />
           </CardsProvider>
         </AuthProvider>
       </ThemeProvider>

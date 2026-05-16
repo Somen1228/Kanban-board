@@ -2,8 +2,6 @@ import { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
   VscGithubInverted,
-  VscLayoutSidebarLeft,
-  VscLayoutSidebarLeftOff,
   VscSignOut,
 } from "react-icons/vsc";
 import { IoColorFilterOutline } from "react-icons/io5";
@@ -12,7 +10,8 @@ import { CardsContext } from "../contexts/CardsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import optionLineLogo from "../assets/option-line.svg";
-import kandooLogo from "../assets/kanban-logo.png";
+import kandooLogo from "../assets/kandoo-head.png";
+import kandooLogoSmiling from "../assets/kandoo-smiling.png";
 import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
 import ThemeSettings from "../components/ThemeSettings";
@@ -30,6 +29,8 @@ function Board() {
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const dropdownRefs = useRef({});
   const triggerRefs = useRef({});
@@ -158,7 +159,7 @@ function Board() {
           onMouseEnter={() => setIsSidebarOpen(true)}
           onMouseLeave={() => {
             setDropdownBoardId(null);
-            setIsSidebarOpen(false);
+            if (!isSidebarPinned) setIsSidebarOpen(false);
           }}
         >
           {isSidebarOpen && (
@@ -252,20 +253,26 @@ function Board() {
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 mr-2">
-                  <img src={kandooLogo} alt="KanDoo" className="w-8 h-8 object-contain" />
-                  <span className="text-lg font-bold tracking-tight hidden sm:inline" style={{ color: 'var(--theme-accent)' }}>KanDoo</span>
-                </div>
                 <button
-                  className="mr-2 focus:outline-none"
-                  style={{ color: 'var(--theme-text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="mr-2 focus:outline-none transition-transform duration-200 hover:scale-110"
+                  onMouseEnter={() => setIsLogoHovered(true)}
+                  onMouseLeave={() => setIsLogoHovered(false)}
+                  onClick={() => {
+                    setIsSidebarPinned((prev) => {
+                      const next = !prev;
+                      setIsSidebarOpen(next);
+                      return next;
+                    });
+                  }}
+                  title={isSidebarPinned ? 'Click to unpin sidebar' : 'Click to pin sidebar open'}
+                  aria-label="Toggle sidebar"
+                  aria-pressed={isSidebarPinned}
                 >
-                  {isSidebarOpen ? (
-                    <VscLayoutSidebarLeft className="text-lg" />
-                  ) : (
-                    <VscLayoutSidebarLeftOff className="text-lg" />
-                  )}
+                  <img
+                    src={isLogoHovered ? kandooLogoSmiling : kandooLogo}
+                    alt="KanDoo"
+                    className="w-12 h-12 object-contain"
+                  />
                 </button>
                 <h1 className="text-2xl sm:text-3xl font-bold truncate" style={{ color: 'var(--theme-text-primary)' }}>
                   {boards.find((board) => board.id === activeBoard)?.title}

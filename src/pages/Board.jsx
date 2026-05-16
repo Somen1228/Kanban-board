@@ -5,6 +5,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import {
   VscGithubInverted,
   VscSignOut,
+  VscFeedback,
 } from "react-icons/vsc";
 import { IoColorFilterOutline } from "react-icons/io5";
 import Cards from "../components/Board/Cards";
@@ -20,6 +21,7 @@ import BoardSkeleton from "../components/Board/BoardSkeleton";
 import ThemeSettings from "../components/ThemeSettings";
 import ShortcutsHelpModal from "../components/ShortcutsHelpModal";
 import ContextMenu from "../components/ContextMenu";
+import FeedbackModal from "../components/Board/FeedbackModal";
 
 function Board() {
   const { boards, setBoards, defaultCards, isLoaded, wakingUp } = useContext(CardsContext);
@@ -38,8 +40,11 @@ function Board() {
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [quickAddSignal, setQuickAddSignal] = useState(0);
   const [ctxMenu, setCtxMenu] = useState(null);
+  const ctxMenuRef = useRef(ctxMenu);
+  useEffect(() => { ctxMenuRef.current = ctxMenu; }, [ctxMenu]);
   const dropdownRefs = useRef({});
   const triggerRefs = useRef({});
   const sidebarRef = useRef(null);
@@ -74,6 +79,7 @@ function Board() {
   useHotkeys('esc', () => {
     if (ctxMenu) { setCtxMenu(null); return; }
     if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
+    if (showFeedbackModal) { setShowFeedbackModal(false); return; }
     if (showThemeSettings) { setShowThemeSettings(false); return; }
     if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
     if (editingBoardId) { setEditingBoardId(null); return; }
@@ -175,7 +181,7 @@ function Board() {
   };
 
   const handleClickOutside = (e) => {
-    if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+    if (sidebarRef.current && !sidebarRef.current.contains(e.target) && !ctxMenuRef.current) {
       setIsSidebarOpen(false);
     }
 
@@ -215,6 +221,7 @@ function Board() {
           style={{ background: 'var(--theme-bg-sidebar)', borderRight: '1px solid var(--theme-border)' }}
           onMouseEnter={() => setIsSidebarOpen(true)}
           onMouseLeave={() => {
+            if (ctxMenuRef.current) return;
             setDropdownBoardId(null);
             if (!isSidebarPinned) setIsSidebarOpen(false);
           }}
@@ -377,6 +384,15 @@ function Board() {
                 >
                   <IoColorFilterOutline />
                 </button>
+                {/* Feedback Button */}
+                <button
+                  className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
+                  style={{ color: 'var(--theme-text-secondary)' }}
+                  onClick={() => setShowFeedbackModal(true)}
+                  title="Send Feedback"
+                >
+                  <VscFeedback />
+                </button>
                 <div className="github-link text-xl mr-5" title="Github Repository Link" style={{ color: 'var(--theme-text-secondary)' }}>
                   <a
                     target="_blank"
@@ -456,6 +472,10 @@ function Board() {
       {showShortcutsHelp && (
         <ShortcutsHelpModal onClose={() => setShowShortcutsHelp(false)} />
       )}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x}

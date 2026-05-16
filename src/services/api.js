@@ -90,4 +90,26 @@ export const boardsApi = {
   },
 };
 
+/**
+ * Feedback API methods
+ */
+export const feedbackApi = {
+  /**
+   * Submit feedback
+   */
+  submit: async (feedback) => {
+    return apiRequest('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(feedback),
+    });
+  },
+
+  /**
+   * Get all feedbacks for current user
+   */
+  getAll: async () => {
+    return apiRequest('/api/feedback');
+  },
+};
+
 export default apiRequest;

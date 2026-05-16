@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import kandooLogo from '../assets/kanban-logo.png';
 import './Login.css';
 
 // Google SVG icon
@@ -127,11 +128,9 @@ function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-logo-icon">
-            <i className="fas fa-columns"></i>
-          </div>
+          <img src={kandooLogo} alt="KanDoo" className="login-logo-img" />
           <h1>KanDoo</h1>
-          <p>Organize your workflow beautifully</p>
+          <p>Calm, focused task management</p>
         </div>
 
         {/* Auth Method Tabs */}

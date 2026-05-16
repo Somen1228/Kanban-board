@@ -12,6 +12,7 @@ import { CardsContext } from "../contexts/CardsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import optionLineLogo from "../assets/option-line.svg";
+import kandooLogo from "../assets/kanban-logo.png";
 import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
 import ThemeSettings from "../components/ThemeSettings";
@@ -250,9 +251,13 @@ function Board() {
         <div className="flex-grow overflow-auto">
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 mr-2">
+                  <img src={kandooLogo} alt="KanDoo" className="w-8 h-8 object-contain" />
+                  <span className="text-lg font-bold tracking-tight hidden sm:inline" style={{ color: 'var(--theme-accent)' }}>KanDoo</span>
+                </div>
                 <button
-                  className="mr-4 focus:outline-none"
+                  className="mr-2 focus:outline-none"
                   style={{ color: 'var(--theme-text-secondary)' }}
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 >
@@ -262,7 +267,7 @@ function Board() {
                     <VscLayoutSidebarLeftOff className="text-lg" />
                   )}
                 </button>
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--theme-text-primary)' }}>
+                <h1 className="text-2xl sm:text-3xl font-bold truncate" style={{ color: 'var(--theme-text-primary)' }}>
                   {boards.find((board) => board.id === activeBoard)?.title}
                 </h1>
               </div>

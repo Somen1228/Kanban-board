@@ -2,33 +2,33 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ===== Default theme variables (Light) ===== */
+/* ===== Default theme variables (Zen Light — brand defaults) ===== */
 :root {
-  --theme-bg-primary: #f8fafc;
-  --theme-bg-secondary: #f1f5f9;
+  --theme-bg-primary: #fbf7f0;
+  --theme-bg-secondary: #f5efe3;
   --theme-bg-card: #ffffff;
-  --theme-bg-sidebar: #f9fafb;
-  --theme-bg-input: #f3f4f6;
-  --theme-bg-hover: #e5e7eb;
+  --theme-bg-sidebar: #fbf7f0;
+  --theme-bg-input: #f5efe3;
+  --theme-bg-hover: #ede3d0;
   --theme-bg-modal: #ffffff;
-  --theme-bg-overlay: rgba(0,0,0,0.5);
-  --theme-text-primary: #1e293b;
-  --theme-text-secondary: #64748b;
-  --theme-text-muted: #94a3b8;
-  --theme-border: #e2e8f0;
-  --theme-shadow: rgba(0,0,0,0.08);
-  --theme-accent: #7c3aed;
-  --theme-accent-hover: #6d28d9;
-  --theme-accent-light: rgba(124,58,237,0.1);
-  --theme-danger: #ef4444;
-  --theme-danger-light: #fca5a5;
-  --theme-danger-bg: #fee2e2;
-  --theme-success: #22c55e;
-  --theme-warning: #eab308;
+  --theme-bg-overlay: rgba(30,58,95,0.4);
+  --theme-text-primary: #1e3a5f;
+  --theme-text-secondary: #5c6b7c;
+  --theme-text-muted: #8b7e6e;
+  --theme-border: #e4dacb;
+  --theme-shadow: rgba(30,58,95,0.08);
+  --theme-accent: #1e3a5f;
+  --theme-accent-hover: #2d4f7a;
+  --theme-accent-light: rgba(30,58,95,0.1);
+  --theme-danger: #e66b5c;
+  --theme-danger-light: #f8b5ac;
+  --theme-danger-bg: #fce8e5;
+  --theme-success: #5baa5b;
+  --theme-warning: #e8b94a;
   --theme-task-bg: #ffffff;
-  --theme-task-border: #f1f5f9;
-  --theme-highlight-bg: #fef08a;
-  --theme-scroll-thumb: rgba(100,100,100,0.4);
+  --theme-task-border: #efe7d9;
+  --theme-highlight-bg: #fbe8a6;
+  --theme-scroll-thumb: rgba(30,58,95,0.3);
 }
 
 body {

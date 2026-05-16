@@ -1,20 +1,22 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { generateTaskID } from "../../utils/taskIdGenerator";
+import { renderRichText } from "../../utils/richText";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
-  VscEdit,
-  VscCheck,
-  VscTrash,
-  VscSave,
-  VscCopy
+  VscEdit, VscCheck, VscTrash, VscSave, VscCopy, VscClose,
+  VscBold, VscItalic,
 } from "react-icons/vsc";
 import { IoDuplicateOutline } from "react-icons/io5";
+import { IoImageOutline } from "react-icons/io5";
+import { RiUnderline } from "react-icons/ri";
 import DeleteWarningModal from "./DeleteWarningModal.jsx";
 import DefaultModal from "./DefaultModal.jsx";
 import ContextMenu from "../ContextMenu.jsx";
+import ImageModal from "./ImageModal.jsx";
 
 const PROTECTED_COLUMN_TITLES = new Set(["To-do", "In-Progress", "Done"]);
 
@@ -39,6 +41,79 @@ const CARD_COLORS = {
   },
 };
 
+// Compress uploaded images to max 900px and ~80% quality
+const compressImage = (file) =>
+  new Promise((resolve, reject) => {
+    if (file.size > 10 * 1024 * 1024) {
+      reject(new Error('Image must be smaller than 10 MB'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.onload = ({ target: { result } }) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Not a valid image'));
+      img.onload = () => {
+        const MAX = 900;
+        const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+// Formatting toolbar — wraps selected text with markdown markers.
+// onPointerDown preventDefault keeps textarea focused while clicking buttons.
+function FormattingToolbar({ targetRef, value, onChange }) {
+  const apply = (marker) => {
+    const el = targetRef.current;
+    if (!el) return;
+    const { selectionStart: s, selectionEnd: e } = el;
+    const selected = value.slice(s, e);
+    const next = value.slice(0, s) + marker + selected + marker + value.slice(e);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = s + marker.length + selected.length + marker.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const btnStyle = {
+    background: 'var(--theme-bg-hover)',
+    border: '1px solid var(--theme-border)',
+    borderRadius: '0.25rem',
+    color: 'var(--theme-text-secondary)',
+    cursor: 'pointer',
+    padding: '2px 7px',
+    fontSize: '0.8rem',
+    display: 'flex',
+    alignItems: 'center',
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
+      <button type="button" style={btnStyle} title="Bold (**text**)"
+        onPointerDown={e => e.preventDefault()} onClick={() => apply('**')}>
+        <VscBold />
+      </button>
+      <button type="button" style={btnStyle} title="Italic (_text_)"
+        onPointerDown={e => e.preventDefault()} onClick={() => apply('_')}>
+        <VscItalic />
+      </button>
+      <button type="button" style={btnStyle} title="Underline (__text__)"
+        onPointerDown={e => e.preventDefault()} onClick={() => apply('__')}>
+        <RiUnderline />
+      </button>
+    </div>
+  );
+}
+
 // Sortable wrapper for individual task rows
 function SortableTask({ task, cardUid, isEditing, className, style, onContextMenu, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -51,12 +126,7 @@ function SortableTask({ task, cardUid, isEditing, className, style, onContextMen
     <li
       ref={setNodeRef}
       className={className}
-      style={{
-        ...style,
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-      }}
+      style={{ ...style, transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       {...attributes}
       {...(isEditing ? {} : listeners)}
       onContextMenu={onContextMenu}
@@ -67,35 +137,35 @@ function SortableTask({ task, cardUid, isEditing, className, style, onContextMen
 }
 
 function Card({
-  index,
-  uid,
-  title,
-  color,
-  isVisible,
-  tasks,
-  updateCardTasks,
-  updateCards,
-  searchTerm,
-  quickAddSignal = 0,
-  dragHandleProps = {},
+  index, uid, title, color, isVisible, tasks,
+  updateCardTasks, updateCards, searchTerm,
+  quickAddSignal = 0, dragHandleProps = {},
 }) {
   const { currentThemeId } = useTheme();
-  const [isMounted, setIsMounted] = useState(false);
-  const [toggleAddTask, setToggleAddTask] = useState(false);
-  const [toggleMenu, setToggleMenu] = useState(false);
-  const [taskValue, setTaskValue] = useState("");
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editingTaskValue, setEditingTaskValue] = useState("");
-  const [doneTasks, setDoneTasks] = useState({});
-  const inputRef = useRef(null);
-  const menuRef = useRef(null);
-  const menuTriggerRef = useRef(null);
+  const [isMounted, setIsMounted]             = useState(false);
+  const [toggleAddTask, setToggleAddTask]     = useState(false);
+  const [toggleMenu, setToggleMenu]           = useState(false);
+  const [taskValue, setTaskValue]             = useState("");
+  const [editingTaskId, setEditingTaskId]     = useState(null);
+  const [editingTaskValue, setEditingTaskValue]   = useState("");
+  const [editingTaskImages, setEditingTaskImages] = useState([]);
+  const [doneTasks, setDoneTasks]             = useState({});
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
-  const [toDelete, setToDelete] = useState("");
-  const [defaultModal, setDefaultModal] = useState(false);
-  const [ctxMenu, setCtxMenu] = useState(null);
+  const [toDelete, setToDelete]               = useState("");
+  const [defaultModal, setDefaultModal]       = useState(false);
+  const [ctxMenu, setCtxMenu]                 = useState(null);
+  const [viewingImages, setViewingImages]     = useState(null); // { images, index }
+
+  const inputRef      = useRef(null);
+  const menuRef       = useRef(null);
+  const menuTriggerRef = useRef(null);
+  const editAreaRef   = useRef(null);
+  const addTaskAreaRef = useRef(null);
+  const fileInputRef  = useRef(null);
 
   const isProtectedColumn = PROTECTED_COLUMN_TITLES.has(title);
+
+  // ── Context menus ──────────────────────────────────────────────────────────
 
   const copyTaskText = async (text) => {
     try {
@@ -107,7 +177,7 @@ function Card({
   };
 
   const duplicateTask = (task) => {
-    const newTask = { id: generateTaskID(title), value: task.value };
+    const newTask = { id: generateTaskID(title), value: task.value, images: task.images || [] };
     updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
   };
 
@@ -115,13 +185,12 @@ function Card({
     e.preventDefault();
     e.stopPropagation();
     setCtxMenu({
-      x: e.clientX,
-      y: e.clientY,
+      x: e.clientX, y: e.clientY,
       items: [
-        { label: "Edit task", icon: <VscEdit />, onClick: () => startEditingTask(task.id, task.value) },
+        { label: "Edit task",   icon: <VscEdit />,          onClick: () => startEditingTask(task.id, task.value, task.images) },
         { label: doneTasks[task.id] ? "Mark as undone" : "Mark as done", icon: <VscCheck />, onClick: () => toggleDoneTask(task.id) },
-        { label: "Copy text", icon: <VscCopy />, onClick: () => copyTaskText(task.value) },
-        { label: "Duplicate task", icon: <IoDuplicateOutline />, onClick: () => duplicateTask(task) },
+        { label: "Copy text",   icon: <VscCopy />,          onClick: () => copyTaskText(task.value) },
+        { label: "Duplicate",   icon: <IoDuplicateOutline />, onClick: () => duplicateTask(task) },
         { divider: true },
         { label: "Delete task", icon: <VscTrash />, danger: true, onClick: () => deleteTask(task.id) },
       ],
@@ -146,8 +215,7 @@ function Card({
     e.preventDefault();
     e.stopPropagation();
     setCtxMenu({
-      x: e.clientX,
-      y: e.clientY,
+      x: e.clientX, y: e.clientY,
       items: [
         { label: "New task", icon: "＋", onClick: () => setToggleAddTask(true) },
         {
@@ -157,7 +225,7 @@ function Card({
             try {
               const text = await navigator.clipboard.readText();
               if (text.trim()) {
-                const newTask = { id: generateTaskID(title), value: text.trim() };
+                const newTask = { id: generateTaskID(title), value: text.trim(), images: [] };
                 updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
                 toast.success("Task created from clipboard");
               } else {
@@ -172,145 +240,103 @@ function Card({
     });
   };
 
+  // ── Effects ────────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    if (isVisible) {
-      setTimeout(() => setIsMounted(true), 10);
-    }
+    if (isVisible) setTimeout(() => setIsMounted(true), 10);
   }, [isVisible]);
 
   useEffect(() => {
-    if (quickAddSignal > 0) {
-      setToggleAddTask(true);
-    }
+    if (quickAddSignal > 0) setToggleAddTask(true);
   }, [quickAddSignal]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
-        setToggleAddTask(false);
-      }
+    const handler = (e) => {
+      if (inputRef.current && !inputRef.current.contains(e.target)) setToggleAddTask(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handler = (e) => {
       if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target) &&
-        menuTriggerRef.current &&
-        !menuTriggerRef.current.contains(event.target)
-      ) {
-        setToggleMenu(false);
-      }
+        menuRef.current && !menuRef.current.contains(e.target) &&
+        menuTriggerRef.current && !menuTriggerRef.current.contains(e.target)
+      ) setToggleMenu(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const toggleInput = () => setToggleAddTask((prev) => !prev);
-
-  const handleInputChange = (e) => setTaskValue(e.target.value);
-  const handleEditChange = (e) => setEditingTaskValue(e.target.value);
+  // ── Task CRUD ──────────────────────────────────────────────────────────────
 
   const addTask = (e) => {
     e.preventDefault();
-    if (taskValue.trim() === "") {
-      setToggleAddTask((prev) => !prev);
-      return;
-    }
-    const newTask = { id: generateTaskID(title), value: taskValue };
+    if (!taskValue.trim()) { setToggleAddTask(false); return; }
+    const newTask = { id: generateTaskID(title), value: taskValue, images: [] };
     updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
     setTaskValue("");
     setToggleAddTask(true);
   };
 
   const deleteTask = (taskId) => {
-    const updatedTasks = { ...tasks };
-    delete updatedTasks[taskId];
-    updateCardTasks(index, updatedTasks);
+    const updated = { ...tasks };
+    delete updated[taskId];
+    updateCardTasks(index, updated);
   };
 
-  const startEditingTask = (taskId, taskVal) => {
+  const startEditingTask = (taskId, taskVal, taskImages = []) => {
     setEditingTaskId(taskId);
     setEditingTaskValue(taskVal);
+    setEditingTaskImages(taskImages || []);
   };
 
-  const saveEditedTask = (taskId, newContent) => {
+  const saveEditedTask = (taskId) => {
     updateCardTasks(index, {
       ...tasks,
-      [taskId]: { ...tasks[taskId], value: newContent },
+      [taskId]: { ...tasks[taskId], value: editingTaskValue, images: editingTaskImages },
     });
     setEditingTaskId(null);
     setEditingTaskValue("");
+    setEditingTaskImages([]);
   };
 
-  const handleDeleteCard = () => {
-    setToggleMenu(false);
-    setToDelete("card");
-    setShowDeleteWarning(true);
-  };
+  const handleDeleteCard = () => { setToggleMenu(false); setToDelete("card");  setShowDeleteWarning(true); };
+  const deleteAllTasks   = () => { setToggleMenu(false); setToDelete("tasks"); Object.keys(tasks).length > 0 ? setShowDeleteWarning(true) : setDefaultModal(true); };
+  const toggleDoneTask   = (taskId) => setDoneTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
 
-  const deleteAllTasks = () => {
-    setToggleMenu(false);
-    setToDelete("tasks");
-    Object.keys(tasks).length > 0 ? setShowDeleteWarning(true) : setDefaultModal(true);
-  };
+  // ── Image upload ───────────────────────────────────────────────────────────
 
-  const toggleDoneTask = (taskId) => {
-    setDoneTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
-  };
-
-  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
-  const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const renderTaskText = (text, term) => {
-    if (!text) return null;
-    const urlSegments = text.split(URL_REGEX);
-    return urlSegments.map((seg, i) => {
-      if (i % 2 === 1) {
-        return (
-          <a
-            key={`u-${i}`}
-            href={seg}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            draggable={false}
-            style={{ color: 'var(--theme-accent)', textDecoration: 'underline', wordBreak: 'break-all' }}
-          >
-            {seg}
-          </a>
-        );
-      }
-      if (!term?.trim()) return seg;
-      const parts = seg.split(new RegExp(`(${escapeRegex(term)})`, "gi"));
-      return parts.map((part, j) =>
-        part.toLowerCase() === term.toLowerCase() ? (
-          <span
-            key={`h-${i}-${j}`}
-            style={{ background: 'var(--theme-highlight-bg)', borderRadius: '2px', padding: '0 2px' }}
-          >
-            {part}
-          </span>
-        ) : (
-          part
-        )
-      );
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    const results = await Promise.allSettled(files.map(compressImage));
+    const b64s = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') b64s.push(r.value);
+      else toast.error(`${files[i].name}: ${r.reason.message}`);
     });
+    if (b64s.length) setEditingTaskImages(prev => [...prev, ...b64s]);
   };
 
-  const highlightText = (text, term) => renderTaskText(text, term);
+  const removeEditingImage = (i) =>
+    setEditingTaskImages(prev => prev.filter((_, idx) => idx !== i));
+
+  // ── Computed ───────────────────────────────────────────────────────────────
 
   const isDark = ['dark', 'midnight', 'forest', 'sunset'].includes(currentThemeId);
   const palette = isDark ? CARD_COLORS.dark : CARD_COLORS.light;
   const cardColor = palette[color] || { bg: 'var(--theme-accent)', text: '#fff' };
+
+  // ── Shared styles ──────────────────────────────────────────────────────────
+
+  const thumbStyle = (clickable) => ({
+    width: '48px', height: '48px', objectFit: 'cover',
+    borderRadius: '4px', border: '1px solid var(--theme-border)',
+    cursor: clickable ? 'pointer' : 'default',
+    flexShrink: 0,
+  });
 
   return (
     <div
@@ -326,29 +352,25 @@ function Card({
           style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}
         >
           {!isProtectedColumn && (
-            <p
-              className="p-2 w-full cursor-pointer rounded-t-lg text-sm"
+            <p className="p-2 w-full cursor-pointer rounded-t-lg text-sm"
               style={{ color: 'var(--theme-text-primary)' }}
-              onMouseEnter={(e) => e.target.style.background = 'var(--theme-bg-hover)'}
-              onMouseLeave={(e) => e.target.style.background = 'transparent'}
-              onClick={handleDeleteCard}
-            >
+              onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
+              onMouseLeave={e => e.target.style.background = 'transparent'}
+              onClick={handleDeleteCard}>
               Delete Card
             </p>
           )}
-          <p
-            className="p-2 w-full cursor-pointer rounded-lg text-sm"
+          <p className="p-2 w-full cursor-pointer rounded-lg text-sm"
             style={{ color: 'var(--theme-text-primary)' }}
-            onMouseEnter={(e) => e.target.style.background = 'var(--theme-bg-hover)'}
-            onMouseLeave={(e) => e.target.style.background = 'transparent'}
-            onClick={deleteAllTasks}
-          >
+            onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
+            onMouseLeave={e => e.target.style.background = 'transparent'}
+            onClick={deleteAllTasks}>
             Delete All Tasks
           </p>
         </div>
       )}
 
-      {/* Card title — also the drag handle for column reordering */}
+      {/* Card header — drag handle */}
       <div
         className="card-title flex justify-between items-center text-sm"
         style={{ backgroundColor: cardColor.bg, color: cardColor.text, cursor: 'grab' }}
@@ -357,17 +379,18 @@ function Card({
       >
         <div className="h-full flex justify-between items-center">
           <h5 className="font-semibold text-center px-2">
-            {highlightText(title, searchTerm)}
+            {renderRichText(title, searchTerm)}
           </h5>
-          <div className="w-4 h-5 text-sm rounded-sm text-center" style={{ color: 'inherit', background: 'rgba(0,0,0,0.1)' }}>
+          <div className="w-4 h-5 text-sm rounded-sm text-center"
+            style={{ color: 'inherit', background: 'rgba(0,0,0,0.1)' }}>
             {Object.keys(tasks).length}
           </div>
         </div>
         <div
           ref={menuTriggerRef}
           className="card-option-div h-8 w-10 pr-1 flex justify-center items-center cursor-pointer opacity-0"
-          onClick={(e) => { e.stopPropagation(); setToggleMenu((prev) => !prev); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); setToggleMenu(prev => !prev); }}
+          onPointerDown={e => e.stopPropagation()}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 30 30" fill="currentColor">
             <path d="M 4 11 C 1.791 11 0 12.791 0 15 C 0 17.209 1.791 19 4 19 C 6.209 19 8 17.209 8 15 C 8 12.791 6.209 11 4 11 z M 15 11 C 12.791 11 11 12.791 11 15 C 11 17.209 12.791 19 15 19 C 17.209 19 19 17.209 19 15 C 19 12.791 17.209 11 15 11 z M 26 11 C 23.791 11 22 12.791 22 15 C 22 17.209 23.791 19 26 19 C 28.209 19 30 17.209 30 15 C 30 12.791 28.209 11 26 11 z" />
@@ -394,74 +417,140 @@ function Card({
                     border: '1px solid var(--theme-task-border)',
                     textDecoration: doneTasks[task.id] ? 'line-through' : 'none',
                   }}
-                  onContextMenu={(e) => openTaskContextMenu(e, task)}
+                  onContextMenu={e => openTaskContextMenu(e, task)}
                 >
                   {editingTaskId === task.id ? (
+                    /* ── Edit mode ── */
                     <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        saveEditedTask(task.id, editingTaskValue);
-                      }}
-                      className="flex items-start w-full gap-2"
+                      onSubmit={e => { e.preventDefault(); saveEditedTask(task.id); }}
+                      className="flex flex-col w-full gap-1"
                     >
-                      <textarea
-                        value={editingTaskValue}
-                        onChange={handleEditChange}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            saveEditedTask(task.id, editingTaskValue);
-                          } else if (e.key === 'Escape') {
-                            setEditingTaskId(null);
-                            setEditingTaskValue('');
-                          }
-                        }}
-                        className="flex-1 p-2 border-2 rounded focus:outline-none resize-y text-sm"
-                        style={{
-                          background: 'var(--theme-bg-input)',
-                          borderColor: 'var(--theme-border)',
-                          color: 'var(--theme-text-primary)',
-                          minHeight: '4rem',
-                          fontFamily: 'inherit',
-                        }}
-                        placeholder="Edit task (Shift+Enter for newline)"
-                        autoFocus
-                        rows={3}
-                      />
+                      <FormattingToolbar targetRef={editAreaRef} value={editingTaskValue} onChange={setEditingTaskValue} />
+                      <div className="flex items-start gap-2">
+                        <textarea
+                          ref={editAreaRef}
+                          value={editingTaskValue}
+                          onChange={e => setEditingTaskValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEditedTask(task.id); }
+                            else if (e.key === 'Escape') { setEditingTaskId(null); setEditingTaskValue(''); setEditingTaskImages([]); }
+                          }}
+                          className="flex-1 p-2 border-2 rounded focus:outline-none resize-none text-sm"
+                          style={{
+                            background: 'var(--theme-bg-input)',
+                            borderColor: 'var(--theme-border)',
+                            color: 'var(--theme-text-primary)',
+                            minHeight: '4rem',
+                            fontFamily: 'inherit',
+                          }}
+                          placeholder="Edit task (Shift+Enter for newline)"
+                          autoFocus
+                          rows={3}
+                        />
+                        <button
+                          type="submit"
+                          className="mt-1 text-lg"
+                          style={{ color: 'var(--theme-text-muted)' }}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-success)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
+                          title="Save (Enter)"
+                          onPointerDown={e => e.stopPropagation()}
+                        >
+                          <VscSave />
+                        </button>
+                      </div>
+
+                      {/* Image thumbnails in edit mode */}
+                      {editingTaskImages.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                          {editingTaskImages.map((src, i) => (
+                            <div key={i} style={{ position: 'relative' }}>
+                              <img src={src} alt={`img-${i}`} style={thumbStyle(false)} />
+                              <button
+                                type="button"
+                                onClick={() => removeEditingImage(i)}
+                                onPointerDown={e => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute', top: '-6px', right: '-6px',
+                                  background: 'var(--theme-danger)',
+                                  border: 'none', borderRadius: '50%',
+                                  color: 'white', width: '16px', height: '16px',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  cursor: 'pointer', fontSize: '10px', padding: 0,
+                                }}
+                              >
+                                <VscClose />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Upload button */}
                       <button
-                        type="submit"
-                        className="mt-1 text-lg"
-                        style={{ color: 'var(--theme-text-muted)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-success)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
-                        title="Save (Enter)"
-                        onPointerDown={(e) => e.stopPropagation()}
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        onPointerDown={e => e.stopPropagation()}
+                        style={{
+                          alignSelf: 'flex-start',
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          background: 'none', border: '1px dashed var(--theme-border)',
+                          borderRadius: '0.25rem', color: 'var(--theme-text-muted)',
+                          fontSize: '0.75rem', padding: '3px 8px', cursor: 'pointer',
+                          marginTop: '2px',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-text-primary)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
                       >
-                        <VscSave />
+                        <IoImageOutline /> Add image
                       </button>
                     </form>
                   ) : (
+                    /* ── Display mode ── */
                     <>
-                      <div className="task-container flex justify-between items-center w-full">
+                      <div
+                        className="task-container flex justify-between items-start w-full"
+                        onDoubleClick={() => startEditingTask(task.id, task.value, task.images)}
+                        title="Double-click to edit"
+                        style={{ cursor: 'text' }}
+                        onPointerDown={e => e.stopPropagation()}
+                      >
                         <p
-                          className="text-sm font-medium"
+                          className="text-sm font-medium flex-1"
                           style={{ color: 'var(--theme-text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                         >
-                          {renderTaskText(task.value, searchTerm)}
+                          {renderRichText(task.value, searchTerm)}
                         </p>
                       </div>
+
+                      {/* Image thumbnails in display mode */}
+                      {task.images?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px', justifyContent: 'flex-start' }}>
+                          {task.images.map((src, i) => (
+                            <img
+                              key={i}
+                              src={src}
+                              alt={`attachment-${i}`}
+                              style={thumbStyle(true)}
+                              onClick={e => { e.stopPropagation(); setViewingImages({ images: task.images, index: i }); }}
+                              onPointerDown={e => e.stopPropagation()}
+                            />
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center w-full mt-2">
                         <h4 className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
-                          {highlightText(task.id, searchTerm)}
+                          {renderRichText(task.id, searchTerm)}
                         </h4>
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => startEditingTask(task.id, task.value)}
+                            onClick={() => startEditingTask(task.id, task.value, task.images)}
                             style={{ color: 'var(--theme-text-muted)' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-accent)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-accent)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
                             title="Edit task"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            onPointerDown={e => e.stopPropagation()}
                           >
                             <VscEdit className="text-base" />
                           </button>
@@ -469,20 +558,20 @@ function Card({
                             onClick={() => toggleDoneTask(task.id)}
                             className="pr-1"
                             style={{ color: 'var(--theme-text-muted)' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-success)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-success)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
                             title="Mark as done"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            onPointerDown={e => e.stopPropagation()}
                           >
                             <VscCheck className="text-base" />
                           </button>
                           <button
                             onClick={() => deleteTask(task.id)}
                             style={{ color: 'var(--theme-text-muted)' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-danger)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-danger)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
                             title="Delete task"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            onPointerDown={e => e.stopPropagation()}
                           >
                             <VscTrash className="text-base" />
                           </button>
@@ -493,10 +582,8 @@ function Card({
                 </SortableTask>
               ))
             ) : (
-              <li
-                className="h-8 task-item flex items-center p-2 mt-2 shadow-sm rounded-md opacity-15"
-                style={{ background: 'var(--theme-task-bg)' }}
-              >
+              <li className="h-8 task-item flex items-center p-2 mt-2 shadow-sm rounded-md opacity-15"
+                style={{ background: 'var(--theme-task-bg)' }}>
                 Drop tasks here
               </li>
             )}
@@ -507,19 +594,16 @@ function Card({
       {/* Add task area */}
       {toggleAddTask ? (
         <form onSubmit={addTask} className="w-full px-1 py-1" ref={inputRef}>
+          <FormattingToolbar targetRef={addTaskAreaRef} value={taskValue} onChange={setTaskValue} />
           <textarea
+            ref={addTaskAreaRef}
             value={taskValue}
-            onChange={handleInputChange}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                addTask(e);
-              } else if (e.key === 'Escape') {
-                setToggleAddTask(false);
-                setTaskValue('');
-              }
+            onChange={e => setTaskValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(e); }
+              else if (e.key === 'Escape') { setToggleAddTask(false); setTaskValue(''); }
             }}
-            className="w-full p-2 border-b-2 shadow-lg rounded focus:outline-none resize-y text-sm"
+            className="w-full p-2 border-b-2 shadow-lg rounded focus:outline-none resize-none text-sm"
             style={{
               background: 'var(--theme-bg-input)',
               borderColor: 'var(--theme-border)',
@@ -534,22 +618,26 @@ function Card({
         </form>
       ) : (
         <div
-          onClick={toggleInput}
+          onClick={() => setToggleAddTask(prev => !prev)}
           onContextMenu={openCreateTaskContextMenu}
           className="create-task-btn m-2 flex flex-col items-start cursor-pointer rounded-lg p-2"
           style={{ color: 'var(--theme-text-muted)', background: 'transparent' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--theme-bg-hover)';
-            e.currentTarget.style.color = 'var(--theme-text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--theme-text-muted)';
-          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; e.currentTarget.style.color = 'var(--theme-text-primary)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--theme-text-muted)'; }}
         >
           + Create Task
         </div>
       )}
+
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleImageUpload}
+      />
 
       {showDeleteWarning && (
         <DeleteWarningModal
@@ -561,17 +649,19 @@ function Card({
         />
       )}
 
-      {defaultModal && (
-        <DefaultModal setDefaultModal={setDefaultModal} />
-      )}
+      {defaultModal && <DefaultModal setDefaultModal={setDefaultModal} />}
 
       {ctxMenu && (
-        <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          items={ctxMenu.items}
-          onClose={() => setCtxMenu(null)}
-        />
+        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(null)} />
+      )}
+
+      {viewingImages && createPortal(
+        <ImageModal
+          images={viewingImages.images}
+          initialIndex={viewingImages.index}
+          onClose={() => setViewingImages(null)}
+        />,
+        document.body
       )}
     </div>
   );

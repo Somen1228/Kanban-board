@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 import { boardsApi } from '../services/api';
 
@@ -11,15 +12,31 @@ const defaultCards = [
   { title: "Done", color: "bg-green-100", isVisible: true, tasks: {} },
 ];
 
+const WAKE_UP_DELAY_MS = 2000;
+const SYNC_DEBOUNCE_MS = 1000;
+
 export const CardsProvider = ({ children }) => {
   const { user } = useAuth();
   const [boards, setBoards] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [wakingUp, setWakingUp] = useState(false);
   const syncTimeoutRef = useRef(null);
   const isSyncingRef = useRef(false);
+  const lastSyncOkRef = useRef(true);
 
-  // Load boards from API when user is authenticated
   useEffect(() => {
+    let loadCompleted = false;
+    const wakeTimer = setTimeout(() => {
+      if (!loadCompleted) setWakingUp(true);
+    }, WAKE_UP_DELAY_MS);
+
+    const finishLoad = () => {
+      loadCompleted = true;
+      clearTimeout(wakeTimer);
+      setWakingUp(false);
+      setIsLoaded(true);
+    };
+
     const loadBoards = async () => {
       if (user) {
         try {
@@ -27,14 +44,12 @@ export const CardsProvider = ({ children }) => {
           if (apiBoards && apiBoards.length > 0) {
             setBoards(apiBoards);
           } else {
-            // Create a default board for new users
             const defaultBoard = {
               id: uuidv4(),
               title: "Untitled",
               cards: defaultCards,
             };
             setBoards([defaultBoard]);
-            // Save default board to backend
             try {
               await boardsApi.create(defaultBoard);
             } catch (err) {
@@ -43,63 +58,69 @@ export const CardsProvider = ({ children }) => {
           }
         } catch (err) {
           console.error('Failed to load boards:', err);
-          // Fallback to localStorage if API fails
           const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
           if (localBoards.length > 0) {
             setBoards(localBoards);
+            toast.warning('Loaded offline copy — backend unreachable');
           } else {
             setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
           }
+          lastSyncOkRef.current = false;
         }
-        setIsLoaded(true);
+        finishLoad();
       } else {
-        // Not authenticated — load from localStorage (graceful fallback)
         const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
         if (localBoards.length > 0) {
           setBoards(localBoards);
         } else {
           setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
         }
-        setIsLoaded(true);
+        finishLoad();
       }
     };
 
     loadBoards();
+
+    return () => {
+      clearTimeout(wakeTimer);
+    };
   }, [user]);
 
-  // Debounced sync to backend when boards change
   const syncToBackend = useCallback(async (boardsToSync) => {
     if (!user || isSyncingRef.current) return;
 
     isSyncingRef.current = true;
     try {
       await boardsApi.syncAll(boardsToSync);
-      // Also save to localStorage as a backup
       localStorage.setItem('boards', JSON.stringify(boardsToSync));
+      if (!lastSyncOkRef.current) {
+        toast.success('Reconnected — changes saved');
+        lastSyncOkRef.current = true;
+      }
     } catch (err) {
       console.error('Failed to sync boards:', err);
-      // Save to localStorage as fallback
       localStorage.setItem('boards', JSON.stringify(boardsToSync));
+      if (lastSyncOkRef.current) {
+        toast.error("Saved locally — we'll retry when the server is back");
+        lastSyncOkRef.current = false;
+      }
     } finally {
       isSyncingRef.current = false;
     }
   }, [user]);
 
-  // Watch for board changes and sync with debounce
   useEffect(() => {
     if (!isLoaded) return;
 
-    // Always keep localStorage in sync
     localStorage.setItem('boards', JSON.stringify(boards));
 
-    // Debounced backend sync
     if (user) {
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
       }
       syncTimeoutRef.current = setTimeout(() => {
         syncToBackend(boards);
-      }, 1000); // 1 second debounce
+      }, SYNC_DEBOUNCE_MS);
     }
 
     return () => {
@@ -110,7 +131,7 @@ export const CardsProvider = ({ children }) => {
   }, [boards, isLoaded, user, syncToBackend]);
 
   return (
-    <CardsContext.Provider value={{ boards, setBoards, defaultCards }}>
+    <CardsContext.Provider value={{ boards, setBoards, defaultCards, isLoaded, wakingUp }}>
       {children}
     </CardsContext.Provider>
   );

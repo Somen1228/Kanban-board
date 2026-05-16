@@ -1,5 +1,6 @@
 import { useState, useContext, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
 import {
   VscGithubInverted,
   VscSignOut,
@@ -14,10 +15,11 @@ import kandooLogo from "../assets/kandoo-head.png";
 import kandooLogoSmiling from "../assets/kandoo-smiling.png";
 import WarningModal from "../components/Board/WarningModal";
 import DropdownMenu from "../components/Board/DropdownMenu";
+import BoardSkeleton from "../components/Board/BoardSkeleton";
 import ThemeSettings from "../components/ThemeSettings";
 
 function Board() {
-  const { boards, setBoards, defaultCards } = useContext(CardsContext);
+  const { boards, setBoards, defaultCards, isLoaded, wakingUp } = useContext(CardsContext);
   const { user, logout } = useAuth();
   const { currentThemeId } = useTheme();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
@@ -345,7 +347,14 @@ function Board() {
                     {user?.displayName || user?.email || user?.phone || 'User'}
                   </span>
                   <button
-                    onClick={logout}
+                    onClick={async () => {
+                      try {
+                        await logout();
+                        toast.success('Signed out');
+                      } catch {
+                        toast.error("Couldn't sign out — please try again");
+                      }
+                    }}
                     className="transition-colors duration-200"
                     style={{ color: 'var(--theme-text-muted)' }}
                     title="Sign Out"
@@ -358,15 +367,19 @@ function Board() {
               </div>
             </div>
             <div className="mt-6">
-              {boards.map(
-                (board) =>
-                  board.id === activeBoard && (
-                    <Cards
-                      key={board.id}
-                      boardId={board.id}
-                      searchTerm={searchTerm}
-                    />
-                  )
+              {!isLoaded ? (
+                <BoardSkeleton message={wakingUp ? 'Waking the server — this can take up to 30 seconds on the first request' : null} />
+              ) : (
+                boards.map(
+                  (board) =>
+                    board.id === activeBoard && (
+                      <Cards
+                        key={board.id}
+                        boardId={board.id}
+                        searchTerm={searchTerm}
+                      />
+                    )
+                )
               )}
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import themes, { themeToCSSVars, validateTheme } from '../themes/themes';
 
 const ThemeContext = createContext();
@@ -52,7 +53,10 @@ export const ThemeProvider = ({ children }) => {
 
   const setTheme = (id) => {
     const exists = allThemes.find((t) => t.id === id);
-    if (exists) setCurrentThemeId(id);
+    if (exists && id !== currentThemeId) {
+      setCurrentThemeId(id);
+      toast.success(`Theme: ${exists.emoji ? exists.emoji + ' ' : ''}${exists.name}`);
+    }
   };
 
   const addCustomTheme = (themeJson) => {

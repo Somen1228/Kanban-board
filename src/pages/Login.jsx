@@ -119,9 +119,39 @@ function Login() {
     setPhoneSuccess('');
   };
 
+  const FRIENDLY_AUTH_ERRORS = {
+    'auth/invalid-email': "That doesn't look like a valid email address.",
+    'auth/invalid-credential': 'Email or password is incorrect.',
+    'auth/wrong-password': 'Wrong password. Try again or reset it.',
+    'auth/user-not-found': 'No account found for that email.',
+    'auth/user-disabled': 'This account has been disabled. Contact support.',
+    'auth/email-already-in-use': 'An account already exists with this email. Try signing in instead.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/missing-password': 'Please enter your password.',
+    'auth/popup-closed-by-user': 'Sign-in window was closed before finishing.',
+    'auth/popup-blocked': 'Pop-up was blocked. Allow pop-ups for this site and try again.',
+    'auth/cancelled-popup-request': 'Another sign-in attempt was already in progress.',
+    'auth/network-request-failed': 'Network error. Check your connection and try again.',
+    'auth/too-many-requests': 'Too many attempts. Please wait a minute before trying again.',
+    'auth/invalid-verification-code': "That verification code didn't work. Please try again.",
+    'auth/invalid-verification-id': 'Verification expired. Please request a new code.',
+    'auth/missing-verification-code': 'Please enter the verification code.',
+    'auth/invalid-phone-number': 'That phone number looks invalid. Include the country code (e.g. +1).',
+    'auth/quota-exceeded': 'Daily SMS limit reached. Try email sign-in instead.',
+    'auth/unauthorized-domain': "This domain isn't authorized for sign-in. Contact support.",
+    'auth/operation-not-allowed': 'This sign-in method is not enabled. Try another option.',
+  };
+
   const formatError = (msg) => {
     if (!msg) return '';
-    return msg.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim();
+    const codeMatch = msg.match(/\(auth\/[\w-]+\)/);
+    if (codeMatch) {
+      const code = codeMatch[0].slice(1, -1); // strip the parens
+      if (FRIENDLY_AUTH_ERRORS[code]) return FRIENDLY_AUTH_ERRORS[code];
+    }
+    // Fall back to the original message minus the Firebase wrapper
+    const cleaned = msg.replace('Firebase: ', '').replace(/\s*\(auth\/[\w-]+\)\.?\s*$/, '').trim();
+    return cleaned || 'Something went wrong. Please try again.';
   };
 
   return (

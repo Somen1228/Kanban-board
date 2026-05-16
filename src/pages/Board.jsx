@@ -40,6 +40,8 @@ function Board() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarPinned, setIsSidebarPinned] = useState(false);
   const [isLogoHovered, setIsLogoHovered] = useState(false);
+  const [headerTitleEditing, setHeaderTitleEditing] = useState(false);
+  const [headerTitleValue, setHeaderTitleValue]     = useState("");
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -341,9 +343,39 @@ function Board() {
                     className="w-12 h-12 object-contain"
                   />
                 </button>
-                <h1 className="text-2xl sm:text-3xl font-bold truncate" style={{ color: 'var(--theme-text-primary)' }}>
-                  {boards.find((board) => board.id === activeBoard)?.title}
-                </h1>
+                {headerTitleEditing ? (
+                  <input
+                    type="text"
+                    value={headerTitleValue}
+                    onChange={e => setHeaderTitleValue(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = headerTitleValue.trim();
+                      if (trimmed && !boards.some(b => b.title === trimmed && b.id !== activeBoard)) {
+                        setBoards(prev => prev.map(b => b.id === activeBoard ? { ...b, title: trimmed } : b));
+                      }
+                      setHeaderTitleEditing(false);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') e.target.blur();
+                      if (e.key === 'Escape') { setHeaderTitleEditing(false); }
+                    }}
+                    className="text-2xl sm:text-3xl font-bold bg-transparent border-b-2 focus:outline-none"
+                    style={{ borderColor: 'var(--theme-accent)', color: 'var(--theme-text-primary)', maxWidth: '280px' }}
+                    autoFocus
+                  />
+                ) : (
+                  <h1
+                    className="text-2xl sm:text-3xl font-bold truncate select-none"
+                    style={{ color: 'var(--theme-text-primary)', cursor: 'text' }}
+                    onDoubleClick={() => {
+                      const b = boards.find(b => b.id === activeBoard);
+                      if (b) { setHeaderTitleValue(b.title); setHeaderTitleEditing(true); }
+                    }}
+                    title="Double-click to rename"
+                  >
+                    {boards.find((board) => board.id === activeBoard)?.title}
+                  </h1>
+                )}
               </div>
               <div className="flex justify-center items-center">
                 <div className="flex items-center rounded-3xl px-2 py-1 mr-5" style={{

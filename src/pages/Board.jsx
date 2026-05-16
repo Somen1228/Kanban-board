@@ -7,6 +7,8 @@ import {
   VscSignOut,
   VscFeedback,
 } from "react-icons/vsc";
+import { CgRename } from "react-icons/cg";
+import { AiOutlineDelete } from "react-icons/ai";
 import { IoColorFilterOutline } from "react-icons/io5";
 import Cards from "../components/Board/Cards";
 import { CardsContext } from "../contexts/CardsContext";
@@ -90,11 +92,11 @@ function Board() {
     e.preventDefault();
     e.stopPropagation();
     const items = [
-      { label: "Rename board", icon: "✏️", onClick: () => handleTitleClick(board.id, board.title) },
+      { label: "Rename board", icon: <CgRename/>, onClick: () => handleTitleClick(board.id, board.title) },
     ];
     if (boards.length > 1) {
       items.push({ divider: true });
-      items.push({ label: "Delete board", icon: "🗑", danger: true, onClick: () => handleDeleteClick(board) });
+      items.push({ label: "Delete board", icon: <AiOutlineDelete/>, danger: true, onClick: () => handleDeleteClick(board) });
     }
     setCtxMenu({ x: e.clientX, y: e.clientY, items });
   };

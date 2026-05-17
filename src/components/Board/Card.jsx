@@ -13,6 +13,7 @@ import {
 } from "react-icons/vsc";
 import { IoDuplicateOutline } from "react-icons/io5";
 import { IoImageOutline } from "react-icons/io5";
+import { IoColorPaletteOutline } from "react-icons/io5";
 import { RiUnderline } from "react-icons/ri";
 import DeleteWarningModal from "./DeleteWarningModal.jsx";
 import DefaultModal from "./DefaultModal.jsx";
@@ -106,6 +107,118 @@ function FormattingToolbar({ editorRef }) {
   );
 }
 
+// ── Card colour helpers ────────────────────────────────────────────────────
+
+// WCAG relative-luminance contrast: pick white or near-black for given bg hex.
+function getContrastText(hex) {
+  if (!hex || !hex.startsWith('#')) return null;
+  const m = hex.replace('#', '').match(/.{2}/g);
+  if (!m || m.length < 3) return null;
+  const [r, g, b] = m.map((h) => parseInt(h, 16));
+  const lin = (c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.55 ? '#1e293b' : '#ffffff';
+}
+
+const PRESET_COLORS = [
+  '#fbcfe8', '#bae6fd', '#99f6e4', '#fef08a',
+  '#fecaca', '#e9d5ff', '#fed7aa', '#d9f99d',
+];
+
+function CardColorPicker({ x, y, currentColor, onPick, onOpenCustom, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  // Clamp to viewport
+  const W = 220, H = 150;
+  const left = Math.min(x, window.innerWidth  - W - 8);
+  const top  = Math.min(y, window.innerHeight - H - 8);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'fixed', top, left, width: W,
+        background: 'var(--theme-bg-modal)',
+        border: '1px solid var(--theme-border)',
+        borderRadius: '0.5rem',
+        padding: '0.75rem',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+        zIndex: 2000,
+        display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      }}
+    >
+      <div style={{ fontSize: '0.65rem', color: 'var(--theme-text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>
+        CARD COLOUR
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px' }}>
+        {PRESET_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => { onPick(c); onClose(); }}
+            title={c}
+            style={{
+              width: '20px', height: '20px',
+              borderRadius: '50%',
+              background: c,
+              border: currentColor === c ? '2px solid var(--theme-accent)' : '1px solid var(--theme-border)',
+              cursor: 'pointer', padding: 0,
+            }}
+          />
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+        <button
+          type="button"
+          onClick={() => {
+            // Close popover first, then trigger persistent input on the Card.
+            // This avoids the popover's outside-click handler racing with the
+            // native picker's overlay events.
+            onClose();
+            // Defer so the popover unmounts before the picker opens
+            requestAnimationFrame(() => onOpenCustom?.());
+          }}
+          title="Custom colour"
+          style={{
+            width: '24px', height: '24px',
+            borderRadius: '50%',
+            background: 'conic-gradient(red, orange, yellow, green, cyan, blue, magenta, red)',
+            border: '1px solid var(--theme-border)',
+            cursor: 'pointer', padding: 0, flexShrink: 0,
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => { onPick(null); onClose(); }}
+          style={{
+            flex: 1,
+            padding: '4px 8px',
+            border: '1px solid var(--theme-border)',
+            borderRadius: '0.25rem',
+            background: 'transparent',
+            color: 'var(--theme-text-muted)',
+            cursor: 'pointer', fontSize: '0.7rem',
+          }}
+          title="Use theme default"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Sortable wrapper for individual task rows
 function SortableTask({ task, cardUid, isEditing, className, style, onContextMenu, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -139,6 +252,7 @@ function Card({
   const [toggleMenu, setToggleMenu]           = useState(false);
   const [isEditingTitle, setIsEditingTitle]   = useState(false);
   const [editingTitleValue, setEditingTitleValue] = useState("");
+  const [colorPickerPos, setColorPickerPos]   = useState(null);
   const [taskValue, setTaskValue]             = useState(""); // HTML string
   const [newTaskImages, setNewTaskImages]     = useState([]);
   const [editingTaskId, setEditingTaskId]     = useState(null);
@@ -158,6 +272,7 @@ function Card({
   const newEditorRef  = useRef(null);
   const editFileInputRef = useRef(null);
   const newFileInputRef  = useRef(null);
+  const colorInputRef    = useRef(null);
 
   const isProtectedColumn = PROTECTED_COLUMN_TITLES.has(title);
 
@@ -193,6 +308,19 @@ function Card({
     setEditingTitleValue("");
   };
 
+  const updateCardColor = (newColor) => {
+    updateCards(cards =>
+      cards.map((c, i) => (i === index ? { ...c, color: newColor } : c))
+    );
+  };
+
+  const openColorPickerFromDropdown = () => {
+    const rect = menuTriggerRef.current?.getBoundingClientRect();
+    if (rect) setColorPickerPos({ x: rect.right - 220, y: rect.bottom + 6 });
+    else setColorPickerPos({ x: 100, y: 100 });
+    setToggleMenu(false);
+  };
+
   const duplicateTask = (task) => {
     const newTask = { id: generateTaskID(title), value: task.value, images: task.images || [] };
     updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
@@ -217,9 +345,12 @@ function Card({
   const openCardContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const clickX = e.clientX;
+    const clickY = e.clientY;
     const items = [
-      { label: "Rename card", icon: <VscEdit />, onClick: startEditingTitle },
-      { label: "Add task",    icon: "＋",         onClick: () => setToggleAddTask(true) },
+      { label: "Rename card",   icon: <VscEdit />,              onClick: startEditingTitle },
+      { label: "Change colour", icon: <IoColorPaletteOutline />, onClick: () => setColorPickerPos({ x: clickX, y: clickY }) },
+      { label: "Add task",      icon: "＋",                      onClick: () => setToggleAddTask(true) },
       { divider: true },
       { label: "Delete all tasks", icon: <VscTrash />, danger: true, onClick: deleteAllTasks },
     ];
@@ -371,7 +502,10 @@ function Card({
 
   const isDark = ['dark', 'midnight', 'forest', 'sunset'].includes(currentThemeId);
   const palette = isDark ? CARD_COLORS.dark : CARD_COLORS.light;
-  const cardColor = palette[color] || { bg: 'var(--theme-accent)', text: '#fff' };
+  // Custom hex → use directly + dynamic contrast. Otherwise palette lookup.
+  const cardColor = color?.startsWith('#')
+    ? { bg: color, text: getContrastText(color) || '#1e293b' }
+    : (palette[color] || { bg: 'var(--theme-accent)', text: '#fff' });
 
   // ── Shared styles ──────────────────────────────────────────────────────────
 
@@ -401,6 +535,13 @@ function Card({
             onMouseLeave={e => e.target.style.background = 'transparent'}
             onClick={() => { setToggleMenu(false); startEditingTitle(); }}>
             Rename Card
+          </p>
+          <p className="p-2 w-full cursor-pointer text-sm"
+            style={{ color: 'var(--theme-text-primary)' }}
+            onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
+            onMouseLeave={e => e.target.style.background = 'transparent'}
+            onClick={openColorPickerFromDropdown}>
+            Change Colour
           </p>
           {!isProtectedColumn && (
             <p className="p-2 w-full cursor-pointer text-sm"
@@ -797,6 +938,28 @@ function Card({
       {ctxMenu && (
         <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(null)} />
       )}
+
+      {colorPickerPos && createPortal(
+        <CardColorPicker
+          x={colorPickerPos.x}
+          y={colorPickerPos.y}
+          currentColor={color}
+          onPick={updateCardColor}
+          onOpenCustom={() => colorInputRef.current?.click()}
+          onClose={() => setColorPickerPos(null)}
+        />,
+        document.body
+      )}
+
+      {/* Persistent native colour picker — lives outside the popover so its
+          overlay events can't race with the popover's outside-click handler. */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        defaultValue={color?.startsWith('#') ? color : '#fbcfe8'}
+        onChange={(e) => updateCardColor(e.target.value)}
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+      />
 
       {viewingImages && createPortal(
         <ImageModal

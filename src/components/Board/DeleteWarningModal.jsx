@@ -46,7 +46,6 @@ function DeleteWarningModal({
                 {/* description */}
                 <p className="text-sm text-center mt-2" style={{ color: 'var(--theme-text-secondary)' }}>
                     Are you sure you want to delete {toDeleteText}?
-                    This action cannot be undone.
                 </p>
 
                 {/* actions */}

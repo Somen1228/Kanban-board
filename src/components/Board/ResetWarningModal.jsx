@@ -52,7 +52,7 @@ function ResetWarningModal({ boardName, handleResetConfirm, handleCancel }) {
 
           {/* description */}
           <p className="text-sm text-center mt-2" style={{ color: 'var(--theme-text-secondary)' }}>
-            This will permanently remove all cards and tasks from the board.
+            This will remove all cards and tasks from the board.
           </p>
 
           {/* instruction */}

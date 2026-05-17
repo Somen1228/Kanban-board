@@ -156,3 +156,30 @@ body {
 .rich-editor strong { font-weight: 700; }
 .rich-editor em { font-style: italic; }
 .rich-editor u { text-decoration: underline; }
+
+/* Header icon button with label underneath */
+.header-icon-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-right: 1rem;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.header-icon-btn:hover {
+  transform: scale(1.06);
+}
+.header-icon-label {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--theme-text-muted);
+  white-space: nowrap;
+  user-select: none;
+}

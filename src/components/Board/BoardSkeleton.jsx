@@ -1,3 +1,5 @@
+import KandooLoader from "../KandooLoader";
+
 function SkeletonBar({ width = '100%', height = '0.75rem', className = '' }) {
   return (
     <div
@@ -22,10 +24,7 @@ function SkeletonCard({ tasks = 3 }) {
         marginBottom: '1rem',
       }}
     >
-      <div
-        className="px-3 py-2"
-        style={{ background: 'var(--theme-bg-hover)' }}
-      >
+      <div className="px-3 py-2" style={{ background: 'var(--theme-bg-hover)' }}>
         <SkeletonBar width="40%" height="0.875rem" />
       </div>
       <div className="p-3 flex flex-col gap-2">
@@ -50,6 +49,7 @@ function SkeletonCard({ tasks = 3 }) {
 function BoardSkeleton({ message }) {
   return (
     <div className="pl-10">
+      <KandooLoader message={message} />
       <div
         className="container"
         style={{
@@ -63,14 +63,6 @@ function BoardSkeleton({ message }) {
         <SkeletonCard tasks={2} />
         <SkeletonCard tasks={4} />
       </div>
-      {message && (
-        <div
-          className="text-center text-sm mt-4 animate-fade-in"
-          style={{ color: 'var(--theme-text-muted)' }}
-        >
-          {message}
-        </div>
-      )}
       <style>{`
         @keyframes skeletonPulse {
           0%, 100% { opacity: 0.5; }
@@ -78,13 +70,6 @@ function BoardSkeleton({ message }) {
         }
         .skeleton-pulse {
           animation: skeletonPulse 1.4s ease-in-out infinite;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
     </div>

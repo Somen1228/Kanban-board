@@ -137,6 +137,8 @@ function Card({
   const [isMounted, setIsMounted]             = useState(false);
   const [toggleAddTask, setToggleAddTask]     = useState(false);
   const [toggleMenu, setToggleMenu]           = useState(false);
+  const [isEditingTitle, setIsEditingTitle]   = useState(false);
+  const [editingTitleValue, setEditingTitleValue] = useState("");
   const [taskValue, setTaskValue]             = useState(""); // HTML string
   const [newTaskImages, setNewTaskImages]     = useState([]);
   const [editingTaskId, setEditingTaskId]     = useState(null);
@@ -171,6 +173,26 @@ function Card({
     }
   };
 
+  const startEditingTitle = () => {
+    setEditingTitleValue(title);
+    setIsEditingTitle(true);
+  };
+
+  const saveCardTitle = () => {
+    const trimmed = editingTitleValue.trim();
+    if (trimmed && trimmed !== title) {
+      updateCards(cards =>
+        cards.map((c, i) => (i === index ? { ...c, title: trimmed } : c))
+      );
+    }
+    setIsEditingTitle(false);
+  };
+
+  const cancelEditCardTitle = () => {
+    setIsEditingTitle(false);
+    setEditingTitleValue("");
+  };
+
   const duplicateTask = (task) => {
     const newTask = { id: generateTaskID(title), value: task.value, images: task.images || [] };
     updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
@@ -196,7 +218,8 @@ function Card({
     e.preventDefault();
     e.stopPropagation();
     const items = [
-      { label: "Add task", icon: "＋", onClick: () => setToggleAddTask(true) },
+      { label: "Rename card", icon: <VscEdit />, onClick: startEditingTitle },
+      { label: "Add task",    icon: "＋",         onClick: () => setToggleAddTask(true) },
       { divider: true },
       { label: "Delete all tasks", icon: <VscTrash />, danger: true, onClick: deleteAllTasks },
     ];
@@ -326,6 +349,8 @@ function Card({
     e.target.value = '';
     const b64s = await processUpload(files);
     if (b64s.length) setEditingTaskImages(prev => [...prev, ...b64s]);
+    // Return focus to the editor so Enter saves the task
+    editEditorRef.current?.focus();
   };
 
   const handleNewUpload = async (e) => {
@@ -333,6 +358,7 @@ function Card({
     e.target.value = '';
     const b64s = await processUpload(files);
     if (b64s.length) setNewTaskImages(prev => [...prev, ...b64s]);
+    newEditorRef.current?.focus();
   };
 
   const removeEditingImage = (i) =>
@@ -369,8 +395,15 @@ function Card({
           className="title-option-menu absolute h-auto w-32 drop-shadow-md top-6 right-2 z-30 flex flex-col items-start justify-around rounded-lg"
           style={{ background: 'var(--theme-bg-modal)', border: '1px solid var(--theme-border)' }}
         >
+          <p className="p-2 w-full cursor-pointer rounded-t-lg text-sm"
+            style={{ color: 'var(--theme-text-primary)' }}
+            onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
+            onMouseLeave={e => e.target.style.background = 'transparent'}
+            onClick={() => { setToggleMenu(false); startEditingTitle(); }}>
+            Rename Card
+          </p>
           {!isProtectedColumn && (
-            <p className="p-2 w-full cursor-pointer rounded-t-lg text-sm"
+            <p className="p-2 w-full cursor-pointer text-sm"
               style={{ color: 'var(--theme-text-primary)' }}
               onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
               onMouseLeave={e => e.target.style.background = 'transparent'}
@@ -378,7 +411,7 @@ function Card({
               Delete Card
             </p>
           )}
-          <p className="p-2 w-full cursor-pointer rounded-lg text-sm"
+          <p className="p-2 w-full cursor-pointer rounded-b-lg text-sm"
             style={{ color: 'var(--theme-text-primary)' }}
             onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
             onMouseLeave={e => e.target.style.background = 'transparent'}
@@ -396,9 +429,40 @@ function Card({
         {...dragHandleProps}
       >
         <div className="h-full flex justify-between items-center">
-          <h5 className="font-semibold text-center px-2">
-            {renderTaskValue(title, searchTerm)}
-          </h5>
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={editingTitleValue}
+              onChange={e => setEditingTitleValue(e.target.value)}
+              onBlur={saveCardTitle}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+                if (e.key === 'Escape') { e.preventDefault(); cancelEditCardTitle(); }
+              }}
+              onClick={e => e.stopPropagation()}
+              onPointerDown={e => e.stopPropagation()}
+              className="font-semibold px-2 bg-transparent border-b focus:outline-none"
+              style={{
+                color: cardColor.text,
+                borderColor: 'rgba(0,0,0,0.4)',
+                width: `${Math.max(editingTitleValue.length + 2, 6)}ch`,
+                minWidth: '4rem',
+                maxWidth: '14rem',
+              }}
+              autoFocus
+              onFocus={e => e.target.select()}
+            />
+          ) : (
+            <h5
+              className="font-semibold text-center px-2 select-none"
+              style={{ cursor: 'text' }}
+              onDoubleClick={e => { e.stopPropagation(); startEditingTitle(); }}
+              onPointerDown={e => e.stopPropagation()}
+              title="Double-click to rename"
+            >
+              {renderTaskValue(title, searchTerm)}
+            </h5>
+          )}
           <div className="w-4 h-5 text-sm rounded-sm text-center"
             style={{ color: 'inherit', background: 'rgba(0,0,0,0.1)' }}>
             {Object.keys(tasks).length}

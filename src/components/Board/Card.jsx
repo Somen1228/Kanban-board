@@ -4,7 +4,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { generateTaskID } from "../../utils/taskIdGenerator";
-import { renderRichText } from "../../utils/richText";
+import { renderTaskValue } from "../../utils/richText";
+import { sanitizeHtml, markdownToHtml, isHtml, htmlToText } from "../../utils/htmlEditor";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   VscEdit, VscCheck, VscTrash, VscSave, VscCopy, VscClose,
@@ -17,6 +18,7 @@ import DeleteWarningModal from "./DeleteWarningModal.jsx";
 import DefaultModal from "./DefaultModal.jsx";
 import ContextMenu from "../ContextMenu.jsx";
 import ImageModal from "./ImageModal.jsx";
+import RichEditor from "./RichEditor.jsx";
 
 const PROTECTED_COLUMN_TITLES = new Set(["To-do", "In-Progress", "Done"]);
 
@@ -67,22 +69,10 @@ const compressImage = (file) =>
     reader.readAsDataURL(file);
   });
 
-// Formatting toolbar — wraps selected text with markdown markers.
-// onPointerDown preventDefault keeps textarea focused while clicking buttons.
-function FormattingToolbar({ targetRef, value, onChange }) {
-  const apply = (marker) => {
-    const el = targetRef.current;
-    if (!el) return;
-    const { selectionStart: s, selectionEnd: e } = el;
-    const selected = value.slice(s, e);
-    const next = value.slice(0, s) + marker + selected + marker + value.slice(e);
-    onChange(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      const pos = s + marker.length + selected.length + marker.length;
-      el.setSelectionRange(pos, pos);
-    });
-  };
+// Formatting toolbar — delegates to RichEditor's exec API.
+// onMouseDown preventDefault keeps the editor focused while clicking buttons.
+function FormattingToolbar({ editorRef }) {
+  const apply = (cmd) => editorRef.current?.exec(cmd);
 
   const btnStyle = {
     background: 'var(--theme-bg-hover)',
@@ -96,18 +86,20 @@ function FormattingToolbar({ targetRef, value, onChange }) {
     alignItems: 'center',
   };
 
+  const mod = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl';
+
   return (
     <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
-      <button type="button" style={btnStyle} title="Bold (**text**)"
-        onPointerDown={e => e.preventDefault()} onClick={() => apply('**')}>
+      <button type="button" style={btnStyle} title={`Bold (${mod}+B)`}
+        onMouseDown={e => e.preventDefault()} onClick={() => apply('bold')}>
         <VscBold />
       </button>
-      <button type="button" style={btnStyle} title="Italic (_text_)"
-        onPointerDown={e => e.preventDefault()} onClick={() => apply('_')}>
+      <button type="button" style={btnStyle} title={`Italic (${mod}+I)`}
+        onMouseDown={e => e.preventDefault()} onClick={() => apply('italic')}>
         <VscItalic />
       </button>
-      <button type="button" style={btnStyle} title="Underline (__text__)"
-        onPointerDown={e => e.preventDefault()} onClick={() => apply('__')}>
+      <button type="button" style={btnStyle} title={`Underline (${mod}+U)`}
+        onMouseDown={e => e.preventDefault()} onClick={() => apply('underline')}>
         <RiUnderline />
       </button>
     </div>
@@ -145,9 +137,10 @@ function Card({
   const [isMounted, setIsMounted]             = useState(false);
   const [toggleAddTask, setToggleAddTask]     = useState(false);
   const [toggleMenu, setToggleMenu]           = useState(false);
-  const [taskValue, setTaskValue]             = useState("");
+  const [taskValue, setTaskValue]             = useState(""); // HTML string
+  const [newTaskImages, setNewTaskImages]     = useState([]);
   const [editingTaskId, setEditingTaskId]     = useState(null);
-  const [editingTaskValue, setEditingTaskValue]   = useState("");
+  const [editingTaskValue, setEditingTaskValue]   = useState(""); // HTML string
   const [editingTaskImages, setEditingTaskImages] = useState([]);
   const [doneTasks, setDoneTasks]             = useState({});
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
@@ -159,16 +152,18 @@ function Card({
   const inputRef      = useRef(null);
   const menuRef       = useRef(null);
   const menuTriggerRef = useRef(null);
-  const editAreaRef   = useRef(null);
-  const addTaskAreaRef = useRef(null);
-  const fileInputRef  = useRef(null);
+  const editEditorRef = useRef(null);
+  const newEditorRef  = useRef(null);
+  const editFileInputRef = useRef(null);
+  const newFileInputRef  = useRef(null);
 
   const isProtectedColumn = PROTECTED_COLUMN_TITLES.has(title);
 
   // ── Context menus ──────────────────────────────────────────────────────────
 
-  const copyTaskText = async (text) => {
+  const copyTaskText = async (value) => {
     try {
+      const text = isHtml(value) ? htmlToText(value) : value;
       await navigator.clipboard.writeText(text);
       toast.success("Copied to clipboard");
     } catch {
@@ -272,11 +267,16 @@ function Card({
   // ── Task CRUD ──────────────────────────────────────────────────────────────
 
   const addTask = (e) => {
-    e.preventDefault();
-    if (!taskValue.trim()) { setToggleAddTask(false); return; }
-    const newTask = { id: generateTaskID(title), value: taskValue, images: [] };
+    e?.preventDefault?.();
+    const clean = sanitizeHtml(taskValue);
+    const hasText = htmlToText(clean).length > 0;
+    if (!hasText && newTaskImages.length === 0) { setToggleAddTask(false); return; }
+    const newTask = { id: generateTaskID(title), value: clean, images: newTaskImages };
     updateCardTasks(index, { ...tasks, [newTask.id]: newTask });
     setTaskValue("");
+    setNewTaskImages([]);
+    newEditorRef.current?.setHtml('');
+    newEditorRef.current?.focus();
     setToggleAddTask(true);
   };
 
@@ -288,14 +288,17 @@ function Card({
 
   const startEditingTask = (taskId, taskVal, taskImages = []) => {
     setEditingTaskId(taskId);
-    setEditingTaskValue(taskVal);
+    // Convert legacy markdown tasks to HTML for the rich editor
+    const initialHtml = isHtml(taskVal) ? (taskVal || '') : markdownToHtml(taskVal || '');
+    setEditingTaskValue(initialHtml);
     setEditingTaskImages(taskImages || []);
   };
 
   const saveEditedTask = (taskId) => {
+    const clean = sanitizeHtml(editingTaskValue);
     updateCardTasks(index, {
       ...tasks,
-      [taskId]: { ...tasks[taskId], value: editingTaskValue, images: editingTaskImages },
+      [taskId]: { ...tasks[taskId], value: clean, images: editingTaskImages },
     });
     setEditingTaskId(null);
     setEditingTaskValue("");
@@ -308,20 +311,35 @@ function Card({
 
   // ── Image upload ───────────────────────────────────────────────────────────
 
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    e.target.value = '';
+  const processUpload = async (files) => {
     const results = await Promise.allSettled(files.map(compressImage));
     const b64s = [];
     results.forEach((r, i) => {
       if (r.status === 'fulfilled') b64s.push(r.value);
       else toast.error(`${files[i].name}: ${r.reason.message}`);
     });
+    return b64s;
+  };
+
+  const handleEditUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    const b64s = await processUpload(files);
     if (b64s.length) setEditingTaskImages(prev => [...prev, ...b64s]);
+  };
+
+  const handleNewUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    const b64s = await processUpload(files);
+    if (b64s.length) setNewTaskImages(prev => [...prev, ...b64s]);
   };
 
   const removeEditingImage = (i) =>
     setEditingTaskImages(prev => prev.filter((_, idx) => idx !== i));
+
+  const removeNewImage = (i) =>
+    setNewTaskImages(prev => prev.filter((_, idx) => idx !== i));
 
   // ── Computed ───────────────────────────────────────────────────────────────
 
@@ -379,7 +397,7 @@ function Card({
       >
         <div className="h-full flex justify-between items-center">
           <h5 className="font-semibold text-center px-2">
-            {renderRichText(title, searchTerm)}
+            {renderTaskValue(title, searchTerm)}
           </h5>
           <div className="w-4 h-5 text-sm rounded-sm text-center"
             style={{ color: 'inherit', background: 'rgba(0,0,0,0.1)' }}>
@@ -425,17 +443,17 @@ function Card({
                       onSubmit={e => { e.preventDefault(); saveEditedTask(task.id); }}
                       className="flex flex-col w-full gap-1"
                     >
-                      <FormattingToolbar targetRef={editAreaRef} value={editingTaskValue} onChange={setEditingTaskValue} />
+                      <FormattingToolbar editorRef={editEditorRef} />
                       <div className="flex items-start gap-2">
-                        <textarea
-                          ref={editAreaRef}
-                          value={editingTaskValue}
-                          onChange={e => setEditingTaskValue(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEditedTask(task.id); }
-                            else if (e.key === 'Escape') { setEditingTaskId(null); setEditingTaskValue(''); setEditingTaskImages([]); }
-                          }}
-                          className="flex-1 p-2 border-2 rounded focus:outline-none resize-none text-sm"
+                        <RichEditor
+                          ref={editEditorRef}
+                          initialHtml={editingTaskValue}
+                          onChange={setEditingTaskValue}
+                          onSave={() => saveEditedTask(task.id)}
+                          onCancel={() => { setEditingTaskId(null); setEditingTaskValue(''); setEditingTaskImages([]); }}
+                          autoFocus
+                          placeholder="Edit task (Shift+Enter for newline)"
+                          className="flex-1 p-2 border-2 rounded text-sm"
                           style={{
                             background: 'var(--theme-bg-input)',
                             borderColor: 'var(--theme-border)',
@@ -443,9 +461,6 @@ function Card({
                             minHeight: '4rem',
                             fontFamily: 'inherit',
                           }}
-                          placeholder="Edit task (Shift+Enter for newline)"
-                          autoFocus
-                          rows={3}
                         />
                         <button
                           type="submit"
@@ -489,7 +504,7 @@ function Card({
                       {/* Upload button */}
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => editFileInputRef.current?.click()}
                         onPointerDown={e => e.stopPropagation()}
                         style={{
                           alignSelf: 'flex-start',
@@ -515,12 +530,12 @@ function Card({
                         style={{ cursor: 'text' }}
                         onPointerDown={e => e.stopPropagation()}
                       >
-                        <p
+                        <div
                           className="text-sm font-medium flex-1"
                           style={{ color: 'var(--theme-text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                         >
-                          {renderRichText(task.value, searchTerm)}
-                        </p>
+                          {renderTaskValue(task.value, searchTerm)}
+                        </div>
                       </div>
 
                       {/* Image thumbnails in display mode */}
@@ -541,7 +556,7 @@ function Card({
 
                       <div className="flex justify-between items-center w-full mt-2">
                         <h4 className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
-                          {renderRichText(task.id, searchTerm)}
+                          {renderTaskValue(task.id, searchTerm)}
                         </h4>
                         <div className="flex items-center space-x-2">
                           <button
@@ -593,17 +608,17 @@ function Card({
 
       {/* Add task area */}
       {toggleAddTask ? (
-        <form onSubmit={addTask} className="w-full px-1 py-1" ref={inputRef}>
-          <FormattingToolbar targetRef={addTaskAreaRef} value={taskValue} onChange={setTaskValue} />
-          <textarea
-            ref={addTaskAreaRef}
-            value={taskValue}
-            onChange={e => setTaskValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(e); }
-              else if (e.key === 'Escape') { setToggleAddTask(false); setTaskValue(''); }
-            }}
-            className="w-full p-2 border-b-2 shadow-lg rounded focus:outline-none resize-none text-sm"
+        <form onSubmit={addTask} className="w-full px-1 py-1 flex flex-col gap-1" ref={inputRef}>
+          <FormattingToolbar editorRef={newEditorRef} />
+          <RichEditor
+            ref={newEditorRef}
+            initialHtml=""
+            onChange={setTaskValue}
+            onSave={() => addTask()}
+            onCancel={() => { setToggleAddTask(false); setTaskValue(''); setNewTaskImages([]); }}
+            autoFocus
+            placeholder="Enter task (Shift+Enter for newline)"
+            className="w-full p-2 border-b-2 shadow-lg rounded text-sm"
             style={{
               background: 'var(--theme-bg-input)',
               borderColor: 'var(--theme-border)',
@@ -611,10 +626,66 @@ function Card({
               minHeight: '3rem',
               fontFamily: 'inherit',
             }}
-            placeholder="Enter task (Shift+Enter for newline)"
-            autoFocus
-            rows={2}
           />
+
+          {/* New task: image thumbnails */}
+          {newTaskImages.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px', justifyContent: 'flex-start' }}>
+              {newTaskImages.map((src, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img src={src} alt={`new-img-${i}`} style={thumbStyle(false)} />
+                  <button
+                    type="button"
+                    onClick={() => removeNewImage(i)}
+                    onPointerDown={e => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', top: '-6px', right: '-6px',
+                      background: 'var(--theme-danger)',
+                      border: 'none', borderRadius: '50%',
+                      color: 'white', width: '16px', height: '16px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontSize: '10px', padding: 0,
+                    }}
+                  >
+                    <VscClose />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* New task: upload + save */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+            <button
+              type="button"
+              onClick={() => newFileInputRef.current?.click()}
+              onPointerDown={e => e.stopPropagation()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                background: 'none', border: '1px dashed var(--theme-border)',
+                borderRadius: '0.25rem', color: 'var(--theme-text-muted)',
+                fontSize: '0.75rem', padding: '3px 8px', cursor: 'pointer',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--theme-text-primary)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--theme-text-muted)'}
+            >
+              <IoImageOutline /> Add image
+            </button>
+            <button
+              type="submit"
+              onPointerDown={e => e.stopPropagation()}
+              style={{
+                marginLeft: 'auto',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                background: 'var(--theme-accent)', border: 'none',
+                borderRadius: '0.25rem', color: 'white',
+                fontSize: '0.75rem', padding: '4px 10px', cursor: 'pointer',
+              }}
+              title="Save task (Enter)"
+            >
+              <VscSave /> Save
+            </button>
+          </div>
         </form>
       ) : (
         <div
@@ -629,14 +700,22 @@ function Card({
         </div>
       )}
 
-      {/* Hidden file input for image upload */}
+      {/* Hidden file inputs for image upload */}
       <input
-        ref={fileInputRef}
+        ref={editFileInputRef}
         type="file"
         accept="image/*"
         multiple
         style={{ display: 'none' }}
-        onChange={handleImageUpload}
+        onChange={handleEditUpload}
+      />
+      <input
+        ref={newFileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleNewUpload}
       />
 
       {showDeleteWarning && (

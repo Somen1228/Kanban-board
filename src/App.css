@@ -139,3 +139,20 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.4);
 }
+
+/* contentEditable placeholder */
+.rich-editor[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: var(--theme-text-muted);
+  opacity: 0.6;
+  pointer-events: none;
+  font-style: italic;
+}
+.rich-editor {
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rich-editor strong { font-weight: 700; }
+.rich-editor em { font-style: italic; }
+.rich-editor u { text-decoration: underline; }

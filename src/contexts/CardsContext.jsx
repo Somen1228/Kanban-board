@@ -22,6 +22,37 @@ const WAKE_UP_DELAY_MS = 2000;
 const SYNC_DEBOUNCE_MS = 1000;
 const HISTORY_LIMIT = 50;
 const HISTORY_DEBOUNCE_MS = 400;
+const LEGACY_BOARDS_KEY = 'boards';
+
+// Per-user localStorage key so accounts can't leak data into each other.
+// On first load after this change, legacy 'boards' is migrated into the
+// signed-in user's slot (one-time, then deleted).
+function boardsKey(user) {
+  return user?.uid ? `boards_${user.uid}` : LEGACY_BOARDS_KEY;
+}
+
+function readLocalBoards(user) {
+  const key = boardsKey(user);
+  let raw = localStorage.getItem(key);
+  // One-time migration: if signed-in user has no slot yet but legacy data exists, claim it
+  if (!raw && user?.uid) {
+    const legacy = localStorage.getItem(LEGACY_BOARDS_KEY);
+    if (legacy) {
+      localStorage.setItem(key, legacy);
+      localStorage.removeItem(LEGACY_BOARDS_KEY);
+      raw = legacy;
+    }
+  }
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+
+function writeLocalBoards(user, boards) {
+  try {
+    localStorage.setItem(boardsKey(user), JSON.stringify(boards));
+  } catch {
+    // Quota — silently swallow so app stays usable; surfaced via syncStatus
+  }
+}
 
 export const CardsProvider = ({ children }) => {
   const { user } = useAuth();
@@ -29,9 +60,25 @@ export const CardsProvider = ({ children }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [wakingUp, setWakingUp] = useState(false);
   const [history, setHistory] = useState({ past: [], future: [] });
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
+  const [syncOk, setSyncOk] = useState(true);
   const syncTimeoutRef = useRef(null);
   const isSyncingRef = useRef(false);
   const lastSyncOkRef = useRef(true);
+
+  // ── Network status ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline  = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online',  goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online',  goOnline);
+    };
+  }, []);
 
   // ── History internals ────────────────────────────────────────────────────
   const skipHistoryRef     = useRef(false); // bypass capture for system updates
@@ -142,7 +189,7 @@ export const CardsProvider = ({ children }) => {
           }
         } catch (err) {
           console.error('Failed to load boards:', err);
-          const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
+          const localBoards = readLocalBoards(user);
           if (localBoards.length > 0) {
             setBoardsRaw(ensureCardUids(localBoards));
             toast.warning('Loaded offline copy — backend unreachable');
@@ -176,17 +223,19 @@ export const CardsProvider = ({ children }) => {
     isSyncingRef.current = true;
     try {
       await boardsApi.syncAll(boardsToSync);
-      localStorage.setItem('boards', JSON.stringify(boardsToSync));
+      writeLocalBoards(user, boardsToSync);
       if (!lastSyncOkRef.current) {
         toast.success('Reconnected — changes saved');
         lastSyncOkRef.current = true;
+        setSyncOk(true);
       }
     } catch (err) {
       console.error('Failed to sync boards:', err);
-      localStorage.setItem('boards', JSON.stringify(boardsToSync));
+      writeLocalBoards(user, boardsToSync);
       if (lastSyncOkRef.current) {
         toast.error("Saved locally — we'll retry when the server is back");
         lastSyncOkRef.current = false;
+        setSyncOk(false);
       }
     } finally {
       isSyncingRef.current = false;
@@ -196,7 +245,7 @@ export const CardsProvider = ({ children }) => {
   useEffect(() => {
     if (!isLoaded) return;
 
-    localStorage.setItem('boards', JSON.stringify(boards));
+    writeLocalBoards(user, boards);
 
     if (user) {
       if (syncTimeoutRef.current) {
@@ -217,6 +266,7 @@ export const CardsProvider = ({ children }) => {
   return (
     <CardsContext.Provider value={{
       boards, setBoards, defaultCards, isLoaded, wakingUp,
+      isOffline, syncOk,
       undo, redo,
       canUndo: history.past.length > 0,
       canRedo: history.future.length > 0,

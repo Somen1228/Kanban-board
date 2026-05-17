@@ -6,7 +6,9 @@ import {
   VscGithubInverted,
   VscSignOut,
   VscFeedback,
+  VscArchive,
 } from "react-icons/vsc";
+import { IoCloudOfflineOutline } from "react-icons/io5";
 import { CgRename } from "react-icons/cg";
 import { AiOutlineDelete } from "react-icons/ai";
 import { IoColorFilterOutline } from "react-icons/io5";
@@ -24,9 +26,10 @@ import ThemeSettings from "../components/ThemeSettings";
 import ShortcutsHelpModal from "../components/ShortcutsHelpModal";
 import ContextMenu from "../components/ContextMenu";
 import FeedbackModal from "../components/Board/FeedbackModal";
+import ExportImportModal from "../components/Board/ExportImportModal";
 
 function Board() {
-  const { boards, setBoards, defaultCards, isLoaded, wakingUp, undo, redo } = useContext(CardsContext);
+  const { boards, setBoards, defaultCards, isLoaded, wakingUp, undo, redo, isOffline, syncOk } = useContext(CardsContext);
   const { user, logout } = useAuth();
   const { currentThemeId, allThemes, setTheme } = useTheme();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
@@ -45,6 +48,7 @@ function Board() {
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showExportImport, setShowExportImport]   = useState(false);
   const [quickAddSignal, setQuickAddSignal] = useState(0);
   const [ctxMenu, setCtxMenu] = useState(null);
   const ctxMenuRef = useRef(ctxMenu);
@@ -90,6 +94,7 @@ function Board() {
     if (ctxMenu) { setCtxMenu(null); return; }
     if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
     if (showFeedbackModal) { setShowFeedbackModal(false); return; }
+    if (showExportImport) { setShowExportImport(false); return; }
     if (showThemeSettings) { setShowThemeSettings(false); return; }
     if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
     if (editingBoardId) { setEditingBoardId(null); return; }
@@ -424,6 +429,15 @@ function Board() {
                 >
                   <IoColorFilterOutline />
                 </button>
+                {/* Export / Import Button */}
+                <button
+                  className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
+                  style={{ color: 'var(--theme-text-secondary)' }}
+                  onClick={() => setShowExportImport(true)}
+                  title="Export / Import Boards"
+                >
+                  <VscArchive />
+                </button>
                 {/* Feedback Button */}
                 <button
                   className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
@@ -433,6 +447,24 @@ function Board() {
                 >
                   <VscFeedback />
                 </button>
+                {/* Offline / Sync-failed badge */}
+                {(isOffline || !syncOk) && (
+                  <div
+                    className="flex items-center gap-1.5 mr-3 px-2 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      background: isOffline ? '#fef3c7' : '#fee2e2',
+                      color:       isOffline ? '#92400e' : '#991b1b',
+                      border: '1px solid',
+                      borderColor: isOffline ? '#fde68a' : '#fecaca',
+                    }}
+                    title={isOffline
+                      ? "You're offline — changes are saving to this device only"
+                      : "Server unreachable — saving locally, will retry"}
+                  >
+                    <IoCloudOfflineOutline />
+                    {isOffline ? 'Offline' : 'Local only'}
+                  </div>
+                )}
                 <div className="github-link text-xl mr-5" title="Github Repository Link" style={{ color: 'var(--theme-text-secondary)' }}>
                   <a
                     target="_blank"
@@ -515,6 +547,13 @@ function Board() {
       <FeedbackModal
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
+      />
+      <ExportImportModal
+        isOpen={showExportImport}
+        boards={boards}
+        activeBoardId={activeBoard}
+        onClose={() => setShowExportImport(false)}
+        onImport={(newBoards) => setBoards((prev) => [...prev, ...newBoards])}
       />
       {ctxMenu && (
         <ContextMenu

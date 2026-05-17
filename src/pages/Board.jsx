@@ -26,7 +26,7 @@ import ContextMenu from "../components/ContextMenu";
 import FeedbackModal from "../components/Board/FeedbackModal";
 
 function Board() {
-  const { boards, setBoards, defaultCards, isLoaded, wakingUp } = useContext(CardsContext);
+  const { boards, setBoards, defaultCards, isLoaded, wakingUp, undo, redo } = useContext(CardsContext);
   const { user, logout } = useAuth();
   const { currentThemeId, allThemes, setTheme } = useTheme();
   const [activeBoard, setActiveBoard] = useState(boards[0]?.id || null);
@@ -72,6 +72,12 @@ function Board() {
 
   // ? opens shortcuts help
   useHotkeys('?', () => setShowShortcutsHelp(true));
+
+  // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (or Cmd/Ctrl+Y) = redo
+  // Hotkeys don't fire in inputs/textareas by default, so native browser undo still works while typing.
+  useHotkeys('mod+z',       (e) => { e.preventDefault(); undo(); });
+  useHotkeys('mod+shift+z', (e) => { e.preventDefault(); redo(); });
+  useHotkeys('mod+y',       (e) => { e.preventDefault(); redo(); });
 
   // N adds a quick task to the active board's first card
   useHotkeys('n', (e) => {

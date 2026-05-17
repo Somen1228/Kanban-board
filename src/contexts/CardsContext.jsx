@@ -20,15 +20,93 @@ const ensureCardUids = (boards) =>
 
 const WAKE_UP_DELAY_MS = 2000;
 const SYNC_DEBOUNCE_MS = 1000;
+const HISTORY_LIMIT = 50;
+const HISTORY_DEBOUNCE_MS = 400;
 
 export const CardsProvider = ({ children }) => {
   const { user } = useAuth();
-  const [boards, setBoards] = useState([]);
+  const [boards, setBoardsRaw] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [wakingUp, setWakingUp] = useState(false);
+  const [history, setHistory] = useState({ past: [], future: [] });
   const syncTimeoutRef = useRef(null);
   const isSyncingRef = useRef(false);
   const lastSyncOkRef = useRef(true);
+
+  // ── History internals ────────────────────────────────────────────────────
+  const skipHistoryRef     = useRef(false); // bypass capture for system updates
+  const pendingSnapshotRef = useRef(null);  // first prev in a rapid-change burst
+  const snapshotTimerRef   = useRef(null);
+  const boardsRef          = useRef(boards);
+  const historyRef         = useRef(history);
+  useEffect(() => { boardsRef.current  = boards;  }, [boards]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+
+  const flushPendingSnapshot = useCallback(() => {
+    if (snapshotTimerRef.current) {
+      clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = null;
+    }
+    const snap = pendingSnapshotRef.current;
+    pendingSnapshotRef.current = null;
+    if (snap !== null) {
+      setHistory(h => ({
+        past: [...h.past, snap].slice(-HISTORY_LIMIT),
+        future: [],
+      }));
+    }
+  }, []);
+
+  // Wrapped setter — debounced history capture, records the FIRST prev in a burst
+  const setBoards = useCallback((updater) => {
+    setBoardsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (!skipHistoryRef.current) {
+        if (pendingSnapshotRef.current === null) pendingSnapshotRef.current = prev;
+        if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+        snapshotTimerRef.current = setTimeout(() => {
+          const snap = pendingSnapshotRef.current;
+          pendingSnapshotRef.current = null;
+          snapshotTimerRef.current = null;
+          if (snap !== null) {
+            setHistory(h => ({
+              past: [...h.past, snap].slice(-HISTORY_LIMIT),
+              future: [],
+            }));
+          }
+        }, HISTORY_DEBOUNCE_MS);
+      }
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    flushPendingSnapshot();
+    const h = historyRef.current;
+    if (h.past.length === 0) return;
+    const prev = h.past[h.past.length - 1];
+    skipHistoryRef.current = true;
+    setBoardsRaw(prev);
+    setHistory({
+      past: h.past.slice(0, -1),
+      future: [boardsRef.current, ...h.future].slice(0, HISTORY_LIMIT),
+    });
+    queueMicrotask(() => { skipHistoryRef.current = false; });
+  }, [flushPendingSnapshot]);
+
+  const redo = useCallback(() => {
+    flushPendingSnapshot();
+    const h = historyRef.current;
+    if (h.future.length === 0) return;
+    const next = h.future[0];
+    skipHistoryRef.current = true;
+    setBoardsRaw(next);
+    setHistory({
+      past: [...h.past, boardsRef.current].slice(-HISTORY_LIMIT),
+      future: h.future.slice(1),
+    });
+    queueMicrotask(() => { skipHistoryRef.current = false; });
+  }, [flushPendingSnapshot]);
 
   useEffect(() => {
     let loadCompleted = false;
@@ -48,14 +126,14 @@ export const CardsProvider = ({ children }) => {
         try {
           const apiBoards = await boardsApi.getAll();
           if (apiBoards && apiBoards.length > 0) {
-            setBoards(ensureCardUids(apiBoards));
+            setBoardsRaw(ensureCardUids(apiBoards));
           } else {
             const defaultBoard = {
               id: uuidv4(),
               title: "Untitled",
               cards: defaultCards,
             };
-            setBoards([defaultBoard]);
+            setBoardsRaw([defaultBoard]);
             try {
               await boardsApi.create(defaultBoard);
             } catch (err) {
@@ -66,10 +144,10 @@ export const CardsProvider = ({ children }) => {
           console.error('Failed to load boards:', err);
           const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
           if (localBoards.length > 0) {
-            setBoards(ensureCardUids(localBoards));
+            setBoardsRaw(ensureCardUids(localBoards));
             toast.warning('Loaded offline copy — backend unreachable');
           } else {
-            setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
+            setBoardsRaw([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
           }
           lastSyncOkRef.current = false;
         }
@@ -77,9 +155,9 @@ export const CardsProvider = ({ children }) => {
       } else {
         const localBoards = JSON.parse(localStorage.getItem('boards') || '[]');
         if (localBoards.length > 0) {
-          setBoards(ensureCardUids(localBoards));
+          setBoardsRaw(ensureCardUids(localBoards));
         } else {
-          setBoards([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
+          setBoardsRaw([{ id: uuidv4(), title: "Untitled", cards: defaultCards }]);
         }
         finishLoad();
       }
@@ -137,7 +215,12 @@ export const CardsProvider = ({ children }) => {
   }, [boards, isLoaded, user, syncToBackend]);
 
   return (
-    <CardsContext.Provider value={{ boards, setBoards, defaultCards, isLoaded, wakingUp }}>
+    <CardsContext.Provider value={{
+      boards, setBoards, defaultCards, isLoaded, wakingUp,
+      undo, redo,
+      canUndo: history.past.length > 0,
+      canRedo: history.future.length > 0,
+    }}>
       {children}
     </CardsContext.Provider>
   );

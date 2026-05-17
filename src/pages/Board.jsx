@@ -422,30 +422,33 @@ function Board() {
                 </div>
                 {/* Theme Toggle Button */}
                 <button
-                  className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
+                  className="header-icon-btn"
                   style={{ color: 'var(--theme-text-secondary)' }}
                   onClick={() => setShowThemeSettings(true)}
                   title="Theme Settings"
                 >
-                  <IoColorFilterOutline />
+                  <IoColorFilterOutline className="text-xl" />
+                  <span className="header-icon-label">Theme</span>
                 </button>
                 {/* Export / Import Button */}
                 <button
-                  className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
+                  className="header-icon-btn"
                   style={{ color: 'var(--theme-text-secondary)' }}
                   onClick={() => setShowExportImport(true)}
                   title="Export / Import Boards"
                 >
-                  <VscArchive />
+                  <VscArchive className="text-xl" />
+                  <span className="header-icon-label">Export</span>
                 </button>
                 {/* Feedback Button */}
                 <button
-                  className="text-xl mr-5 transition-transform duration-200 hover:scale-110"
+                  className="header-icon-btn"
                   style={{ color: 'var(--theme-text-secondary)' }}
                   onClick={() => setShowFeedbackModal(true)}
                   title="Send Feedback"
                 >
-                  <VscFeedback />
+                  <VscFeedback className="text-xl" />
+                  <span className="header-icon-label">Feedback</span>
                 </button>
                 {/* Offline / Sync-failed badge */}
                 {(isOffline || !syncOk) && (
@@ -465,14 +468,17 @@ function Board() {
                     {isOffline ? 'Offline' : 'Local only'}
                   </div>
                 )}
-                <div className="github-link text-xl mr-5" title="Github Repository Link" style={{ color: 'var(--theme-text-secondary)' }}>
-                  <a
-                    target="_blank"
-                    href="https://github.com/Somen1228/Kanban-board"
-                  >
-                    <VscGithubInverted />
-                  </a>
-                </div>
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/Somen1228/Kanban-board"
+                  className="header-icon-btn"
+                  style={{ color: 'var(--theme-text-secondary)' }}
+                  title="Github Repository"
+                >
+                  <VscGithubInverted className="text-xl" />
+                  <span className="header-icon-label">GitHub</span>
+                </a>
                 {/* User Profile & Logout */}
                 <div className="flex items-center gap-3 ml-2">
                   {user?.photoUrl ? (
@@ -500,13 +506,14 @@ function Board() {
                         toast.error("Couldn't sign out — please try again");
                       }
                     }}
-                    className="transition-colors duration-200"
+                    className="header-icon-btn"
                     style={{ color: 'var(--theme-text-muted)' }}
                     title="Sign Out"
-                    onMouseEnter={(e) => e.target.style.color = 'var(--theme-danger)'}
-                    onMouseLeave={(e) => e.target.style.color = 'var(--theme-text-muted)'}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-danger)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
                   >
                     <VscSignOut className="text-lg" />
+                    <span className="header-icon-label">Sign out</span>
                   </button>
                 </div>
               </div>

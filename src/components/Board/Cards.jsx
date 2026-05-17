@@ -266,11 +266,15 @@ function Cards({ boardId, searchTerm, quickAddSignal }) {
     <div>
       <div className="pl-10 option-container mb-4 w-auto">
         <div className="flex items-center justify-end">
-          <div className="reset-board text-xl mr-5" style={{ color: "var(--theme-text-secondary)" }}>
-            <button onClick={handleResetClick} title="Reset board to default">
-              <VscHistory />
-            </button>
-          </div>
+          <button
+            onClick={handleResetClick}
+            className="header-icon-btn"
+            style={{ color: "var(--theme-text-secondary)" }}
+            title="Reset board to default"
+          >
+            <VscHistory className="text-xl" />
+            <span className="header-icon-label">Reset</span>
+          </button>
         </div>
       </div>
 

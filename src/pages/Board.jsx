@@ -413,7 +413,7 @@ function Board() {
                 >
                   <img
                     src={isLogoHovered ? kandooLogoSmiling : kandooLogo}
-                    alt="KanDoo"
+                    alt="Kandoo"
                     className="w-12 h-12 object-contain"
                   />
                 </button>
@@ -457,7 +457,7 @@ function Board() {
                   <div className="flex items-center rounded-3xl px-2 py-1" style={{
                     border: '1px solid var(--theme-border)',
                     background: 'var(--theme-bg-input)',
-                    minWidth: 280,
+                    minWidth: 500,
                   }}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pt-0.5"
                       style={{ color: 'var(--theme-text-secondary)' }}
@@ -467,12 +467,12 @@ function Board() {
                     </svg>
                     <input
                       ref={searchInputRef}
-                      className="ml-2 flex-1 text-md outline-none bg-transparent"
+                      className="ml-2 flex-1 text-sm outline-none bg-transparent"
                       style={{ color: 'var(--theme-text-primary)', minWidth: 0 }}
                       type="text"
                       name="search"
                       id="search"
-                      placeholder="Search · try urgent has:image"
+                      placeholder="Search anything"
                       value={searchTerm}
                       onChange={handleSearch}
                       onKeyDown={(e) => {

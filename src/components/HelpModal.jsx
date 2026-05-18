@@ -58,8 +58,8 @@ const SECTIONS = [
     label: 'Getting started',
     content: (
       <>
-        <H2>Welcome to KanDoo</H2>
-        <P>KanDoo is a calm, focused Kanban board for managing tasks. Pick a tab from the left to learn about each feature.</P>
+        <H2>Welcome to Kandoo</H2>
+        <P>Kandoo is a calm, focused Kanban board for managing tasks. Pick a tab from the left to learn about each feature.</P>
         <SubH>The basics</SubH>
         <Steps items={[
           <>Sign in with Google, email, or phone (top-right shows your account).</>,
@@ -264,7 +264,7 @@ const SECTIONS = [
         </P>
         <SubH>Granularity</SubH>
         <P>Rapid changes (e.g. dragging) collapse into one undo step thanks to a 400 ms debounce. History caps at 50 steps.</P>
-        <Tip>Browser's native <Kbd>⌘+Z</Kbd> still works while typing in a text field — KanDoo's undo only fires when no input is focused.</Tip>
+        <Tip>Browser's native <Kbd>⌘+Z</Kbd> still works while typing in a text field — Kandoo's undo only fires when no input is focused.</Tip>
       </>
     ),
   },
@@ -317,7 +317,7 @@ const SECTIONS = [
     content: (
       <>
         <H2>Offline mode</H2>
-        <P>KanDoo keeps working without an internet connection.</P>
+        <P>Kandoo keeps working without an internet connection.</P>
         <SubH>How it works</SubH>
         <Steps items={[
           <>Every change autosaves to local storage on your device.</>,
@@ -432,7 +432,7 @@ function HelpModal({ isOpen, onClose }) {
           borderBottom: '1px solid var(--theme-border)',
         }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <VscMortarBoard /> KanDoo Help
+            <VscMortarBoard /> Kandoo Help
           </h2>
           <button
             onClick={onClose}

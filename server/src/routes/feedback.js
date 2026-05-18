@@ -9,7 +9,7 @@ const router = express.Router();
 // Resend uses HTTPS (port 443) — works on Render's free tier, unlike SMTP.
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FEEDBACK_TO   = 'somen1228@gmail.com';
-const FEEDBACK_FROM = 'KanDoo Feedback <onboarding@resend.dev>';
+const FEEDBACK_FROM = 'Kandoo Feedback <onboarding@resend.dev>';
 
 router.post('/', authenticate, async (req, res) => {
   try {
@@ -46,7 +46,7 @@ router.post('/', authenticate, async (req, res) => {
       from: FEEDBACK_FROM,
       to: FEEDBACK_TO,
       replyTo: user.email || undefined,
-      subject: `[KanDoo] ${feedbackTypeLabel} — ${subject} · ${senderLabel}`,
+      subject: `[Kandoo] ${feedbackTypeLabel} — ${subject} · ${senderLabel}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2c3e50; margin: 0 0 4px;">${feedbackTypeLabel}</h2>

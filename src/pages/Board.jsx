@@ -9,6 +9,7 @@ import {
   VscSignOut,
   VscFeedback,
   VscArchive,
+  VscQuestion,
 } from "react-icons/vsc";
 import { IoCloudOfflineOutline } from "react-icons/io5";
 import { CgRename } from "react-icons/cg";
@@ -29,6 +30,7 @@ import ShortcutsHelpModal from "../components/ShortcutsHelpModal";
 import ContextMenu from "../components/ContextMenu";
 import FeedbackModal from "../components/Board/FeedbackModal";
 import ExportImportModal from "../components/Board/ExportImportModal";
+import HelpModal from "../components/HelpModal";
 
 function Board() {
   const { boards, setBoards, defaultCards, isLoaded, wakingUp, undo, redo, isOffline, syncOk } = useContext(CardsContext);
@@ -51,6 +53,7 @@ function Board() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showExportImport, setShowExportImport]   = useState(false);
+  const [showHelpModal, setShowHelpModal]         = useState(false);
   const [filterMode, setFilterMode]               = useState(false);
   const [currentMatchIdx, setCurrentMatchIdx]     = useState(0);
   const [showCrossBoardDropdown, setShowCrossBoardDropdown] = useState(false);
@@ -153,6 +156,7 @@ function Board() {
     if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
     if (showFeedbackModal) { setShowFeedbackModal(false); return; }
     if (showExportImport) { setShowExportImport(false); return; }
+    if (showHelpModal) { setShowHelpModal(false); return; }
     if (showAccountMenu) { setShowAccountMenu(false); return; }
     if (showThemeSettings) { setShowThemeSettings(false); return; }
     if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
@@ -620,6 +624,16 @@ function Board() {
                   <VscFeedback className="text-xl" />
                   <span className="header-icon-label">Feedback</span>
                 </button>
+                {/* Help Button */}
+                <button
+                  className="header-icon-btn"
+                  style={{ color: 'var(--theme-text-secondary)' }}
+                  onClick={() => setShowHelpModal(true)}
+                  title="Help &amp; Features Guide"
+                >
+                  <VscQuestion className="text-xl" />
+                  <span className="header-icon-label">Help</span>
+                </button>
                 {/* Offline / Sync-failed badge */}
                 {(isOffline || !syncOk) && (
                   <div
@@ -813,6 +827,10 @@ function Board() {
         activeBoardId={activeBoard}
         onClose={() => setShowExportImport(false)}
         onImport={(newBoards) => setBoards((prev) => [...prev, ...newBoards])}
+      />
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
       {ctxMenu && (
         <ContextMenu

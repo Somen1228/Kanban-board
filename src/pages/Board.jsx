@@ -1,9 +1,11 @@
-import { useState, useContext, useRef, useEffect } from "react";
+import { useState, useContext, useRef, useEffect, useMemo } from "react";
+import { parseQuery, searchBoards } from "../utils/search";
+import { VscFilter, VscFilterFilled, VscChevronDown } from "react-icons/vsc";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
-  VscGithubInverted,
+  // VscGithubInverted,  // re-enable when un-commenting the GitHub link in the header
   VscSignOut,
   VscFeedback,
   VscArchive,
@@ -49,6 +51,39 @@ function Board() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showExportImport, setShowExportImport]   = useState(false);
+  const [filterMode, setFilterMode]               = useState(false);
+  const [currentMatchIdx, setCurrentMatchIdx]     = useState(0);
+  const [showCrossBoardDropdown, setShowCrossBoardDropdown] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  const query = useMemo(() => parseQuery(searchTerm), [searchTerm]);
+  const perBoardResults = useMemo(
+    () => (query.isEmpty ? [] : searchBoards(boards, query)),
+    [boards, query]
+  );
+  const activeBoardResult = perBoardResults.find((r) => r.boardId === activeBoard);
+  const activeMatches = activeBoardResult?.taskIds || [];
+  const otherBoardsWithMatches = perBoardResults.filter(
+    (r) => r.boardId !== activeBoard && r.matchCount > 0
+  );
+  const totalMatches = perBoardResults.reduce((s, r) => s + r.matchCount, 0);
+  const currentMatchTaskId = activeMatches[currentMatchIdx] ?? null;
+
+  // Reset index when query changes or matches set shifts
+  useEffect(() => { setCurrentMatchIdx(0); }, [query.raw, activeBoard]);
+
+  // Scroll current match into view + brief flash
+  useEffect(() => {
+    if (!currentMatchTaskId) return;
+    const el = document.querySelector(`[data-task-id="${CSS.escape(currentMatchTaskId)}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [currentMatchTaskId]);
+
+  const jumpToMatch = (delta) => {
+    if (activeMatches.length === 0) return;
+    setCurrentMatchIdx((i) => (i + delta + activeMatches.length) % activeMatches.length);
+  };
   const [quickAddSignal, setQuickAddSignal] = useState(0);
   const [ctxMenu, setCtxMenu] = useState(null);
   const ctxMenuRef = useRef(ctxMenu);
@@ -57,6 +92,29 @@ function Board() {
   const triggerRefs = useRef({});
   const sidebarRef = useRef(null);
   const searchInputRef = useRef(null);
+  const accountMenuRef = useRef(null);
+
+  // Auto-select the first board once boards load, or when the active one disappears
+  // (initial mount captures activeBoard from an empty boards[], so we sync here).
+  useEffect(() => {
+    if (boards.length > 0 && !boards.some((b) => b.id === activeBoard)) {
+      setActiveBoard(boards[0].id);
+    } else if (boards.length === 0 && activeBoard !== null) {
+      setActiveBoard(null);
+    }
+  }, [boards, activeBoard]);
+
+  // Close account menu on outside click
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const handler = (e) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAccountMenu]);
 
   // ===== Keyboard shortcuts =====
   // Cmd/Ctrl+K and / focus the search bar
@@ -95,6 +153,7 @@ function Board() {
     if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
     if (showFeedbackModal) { setShowFeedbackModal(false); return; }
     if (showExportImport) { setShowExportImport(false); return; }
+    if (showAccountMenu) { setShowAccountMenu(false); return; }
     if (showThemeSettings) { setShowThemeSettings(false); return; }
     if (showWarningModal) { setShowWarningModal(false); setBoardToDelete(null); return; }
     if (editingBoardId) { setEditingBoardId(null); return; }
@@ -389,36 +448,147 @@ function Board() {
                 )}
               </div>
               <div className="flex justify-center items-center">
-                <div className="flex items-center rounded-3xl px-2 py-1 mr-5" style={{
-                  border: '1px solid var(--theme-border)',
-                  background: 'var(--theme-bg-input)',
-                }}>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 pt-0.5"
-                    style={{ color: 'var(--theme-text-secondary)' }}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                {/* Search wrapper — pill + filter toggle + cross-board dropdown */}
+                <div className="relative mr-5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="flex items-center rounded-3xl px-2 py-1" style={{
+                    border: '1px solid var(--theme-border)',
+                    background: 'var(--theme-bg-input)',
+                    minWidth: 280,
+                  }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pt-0.5"
+                      style={{ color: 'var(--theme-text-secondary)' }}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      ref={searchInputRef}
+                      className="ml-2 flex-1 text-md outline-none bg-transparent"
+                      style={{ color: 'var(--theme-text-primary)', minWidth: 0 }}
+                      type="text"
+                      name="search"
+                      id="search"
+                      placeholder="Search · try urgent has:image"
+                      value={searchTerm}
+                      onChange={handleSearch}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          jumpToMatch(e.shiftKey ? -1 : 1);
+                        }
+                      }}
                     />
-                  </svg>
-                  <input
-                    ref={searchInputRef}
-                    className="ml-2 text-md outline-none bg-transparent"
-                    style={{ color: 'var(--theme-text-primary)' }}
-                    type="text"
-                    name="search"
-                    id="search"
-                    placeholder="Search (⌘K or /)"
-                    value={searchTerm}
-                    onChange={handleSearch}
-                  />
+                    {!query.isEmpty && (
+                      <span
+                        title={activeMatches.length ? 'Press Enter to jump · Shift+Enter for previous' : 'No matches in this board'}
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                          background: activeMatches.length ? 'var(--theme-bg-hover)' : 'transparent',
+                          color: activeMatches.length ? 'var(--theme-text-primary)' : 'var(--theme-text-muted)',
+                          whiteSpace: 'nowrap',
+                          marginLeft: 6,
+                        }}
+                      >
+                        {activeMatches.length
+                          ? `${currentMatchIdx + 1} / ${activeMatches.length}`
+                          : '0 results'}
+                      </span>
+                    )}
+                    {!query.isEmpty && searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                        title="Clear search (Esc)"
+                        style={{ marginLeft: 4, color: 'var(--theme-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode((m) => !m)}
+                    title={filterMode ? 'Hide non-matching (on) — click to switch to highlight mode' : 'Highlight matches (on) — click to switch to filter mode'}
+                    style={{
+                      padding: '6px',
+                      borderRadius: '999px',
+                      border: '1px solid var(--theme-border)',
+                      background: filterMode ? 'var(--theme-accent)' : 'var(--theme-bg-input)',
+                      color: filterMode ? 'white' : 'var(--theme-text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    {filterMode ? <VscFilterFilled /> : <VscFilter />}
+                  </button>
+
+                  {/* Cross-board dropdown trigger */}
+                  {otherBoardsWithMatches.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCrossBoardDropdown((s) => !s)}
+                      title={`${totalMatches - activeMatches.length} matches in other boards`}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '999px',
+                        border: '1px solid var(--theme-border)',
+                        background: 'var(--theme-bg-input)',
+                        color: 'var(--theme-text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      +{otherBoardsWithMatches.length}
+                      <VscChevronDown style={{ transform: showCrossBoardDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                    </button>
+                  )}
+
+                  {showCrossBoardDropdown && otherBoardsWithMatches.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                        minWidth: 220, maxHeight: 280, overflowY: 'auto',
+                        background: 'var(--theme-bg-modal)',
+                        border: '1px solid var(--theme-border)',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                        zIndex: 50,
+                        padding: '4px',
+                      }}
+                    >
+                      <div style={{ padding: '6px 10px', fontSize: '0.65rem', color: 'var(--theme-text-muted)', letterSpacing: '0.06em', fontWeight: 600 }}>
+                        ALSO IN OTHER BOARDS
+                      </div>
+                      {otherBoardsWithMatches.map((r) => (
+                        <button
+                          key={r.boardId}
+                          type="button"
+                          onClick={() => {
+                            setActiveBoard(r.boardId);
+                            setShowCrossBoardDropdown(false);
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            width: '100%', padding: '6px 10px',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: 'var(--theme-text-primary)', fontSize: '0.85rem',
+                            borderRadius: '0.25rem', textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--theme-bg-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                          <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.75rem', marginLeft: 8 }}>{r.matchCount}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {/* Theme Toggle Button */}
                 <button
@@ -468,6 +638,7 @@ function Board() {
                     {isOffline ? 'Offline' : 'Local only'}
                   </div>
                 )}
+                {/* GitHub link — hidden for now
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
@@ -479,58 +650,139 @@ function Board() {
                   <VscGithubInverted className="text-xl" />
                   <span className="header-icon-label">GitHub</span>
                 </a>
-                {/* User Profile & Logout */}
-                <div className="flex items-center gap-3 ml-2">
-                  {user?.photoUrl ? (
-                    <img
-                      src={user.photoUrl}
-                      alt={user.displayName || 'User'}
-                      className="w-8 h-8 rounded-full object-cover"
-                      style={{ border: '2px solid var(--theme-border)' }}
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--theme-accent)' }}>
-                      {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+                */}
+                {/* Account avatar + dropdown menu */}
+                <div ref={accountMenuRef} className="relative ml-2">
+                  <button
+                    onClick={() => setShowAccountMenu((s) => !s)}
+                    className="flex items-center gap-2 p-1 rounded-full transition-colors"
+                    style={{ background: showAccountMenu ? 'var(--theme-bg-hover)' : 'transparent' }}
+                    title="Account"
+                  >
+                    {user?.photoUrl ? (
+                      <img
+                        src={user.photoUrl}
+                        alt={user.displayName || 'User'}
+                        className="w-8 h-8 rounded-full object-cover"
+                        style={{ border: '2px solid var(--theme-border)' }}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--theme-accent)' }}>
+                        {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm font-medium hidden sm:block max-w-[120px] truncate" style={{ color: 'var(--theme-text-secondary)' }}>
+                      {user?.displayName || user?.email || user?.phone || 'User'}
+                    </span>
+                  </button>
+
+                  {showAccountMenu && (
+                    <div
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                        minWidth: 220,
+                        background: 'var(--theme-bg-modal)',
+                        border: '1px solid var(--theme-border)',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                        zIndex: 50,
+                        padding: '4px',
+                      }}
+                    >
+                      {/* Account info header */}
+                      <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid var(--theme-border)' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--theme-text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user?.displayName || 'User'}
+                        </div>
+                        {(user?.email || user?.phone) && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--theme-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user.email || user.phone}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sign out */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setShowAccountMenu(false);
+                          try {
+                            await logout();
+                            toast.success('Signed out');
+                          } catch {
+                            toast.error("Couldn't sign out — please try again");
+                          }
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          width: '100%', padding: '8px 10px',
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: 'var(--theme-danger)', fontSize: '0.85rem',
+                          borderRadius: '0.25rem', textAlign: 'left', marginTop: 4,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--theme-danger-bg, rgba(239,68,68,0.1))'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <VscSignOut /> Sign out
+                      </button>
                     </div>
                   )}
-                  <span className="text-sm font-medium hidden sm:block max-w-[120px] truncate" style={{ color: 'var(--theme-text-secondary)' }}>
-                    {user?.displayName || user?.email || user?.phone || 'User'}
-                  </span>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await logout();
-                        toast.success('Signed out');
-                      } catch {
-                        toast.error("Couldn't sign out — please try again");
-                      }
-                    }}
-                    className="header-icon-btn"
-                    style={{ color: 'var(--theme-text-muted)' }}
-                    title="Sign Out"
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-danger)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-muted)'}
-                  >
-                    <VscSignOut className="text-lg" />
-                    <span className="header-icon-label">Sign out</span>
-                  </button>
                 </div>
               </div>
             </div>
             <div className="mt-6">
               {!isLoaded ? (
                 <BoardSkeleton message={wakingUp ? 'Waking the server — this can take up to 30 seconds on the first request' : null} />
+              ) : boards.length === 0 ? (
+                <div className="text-center px-6 py-16" style={{ color: 'var(--theme-text-secondary)' }}>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--theme-text-primary)' }}>
+                    Welcome to Kandoo
+                  </h2>
+                  <p className="text-sm mb-6" style={{ color: 'var(--theme-text-muted)' }}>
+                    You don&apos;t have any boards yet. Create one to start organising your tasks.
+                  </p>
+                  <button
+                    onClick={addBoard}
+                    className="px-5 py-2 rounded-md font-medium transition-transform hover:scale-105"
+                    style={{ background: 'var(--theme-accent)', color: 'white' }}
+                  >
+                    + Create your first board
+                  </button>
+                </div>
+              ) : !activeBoard ? (
+                <div className="text-center px-6 py-16" style={{ color: 'var(--theme-text-secondary)' }}>
+                  <p className="text-sm mb-3" style={{ color: 'var(--theme-text-muted)' }}>
+                    Pick a board from the sidebar to get started, or create a new one.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                    <span>👈 Hover the left edge to open the sidebar</span>
+                  </div>
+                </div>
               ) : (
                 boards.map(
                   (board) =>
                     board.id === activeBoard && (
-                      <Cards
-                        key={board.id}
-                        boardId={board.id}
-                        searchTerm={searchTerm}
-                        quickAddSignal={quickAddSignal}
-                      />
+                      <div key={board.id}>
+                        <Cards
+                          boardId={board.id}
+                          searchTerm={searchTerm}
+                          query={query}
+                          filterMode={filterMode}
+                          currentMatchTaskId={currentMatchTaskId}
+                          quickAddSignal={quickAddSignal}
+                        />
+                        {filterMode && !query.isEmpty && activeMatches.length === 0 && (
+                          <div className="text-center text-sm mt-8" style={{ color: 'var(--theme-text-muted)' }}>
+                            No tasks match <span style={{ color: 'var(--theme-text-primary)' }}>{`"${query.raw}"`}</span> in this board.
+                            {otherBoardsWithMatches.length > 0 && (
+                              <div className="text-xs mt-2">
+                                Found {totalMatches} match{totalMatches > 1 ? 'es' : ''} in {otherBoardsWithMatches.length} other board{otherBoardsWithMatches.length > 1 ? 's' : ''}.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )
                 )
               )}

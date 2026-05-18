@@ -8,11 +8,17 @@ const MD_RX  = /\*\*[^*\n]+\*\*|__[^_\n]+__|_[^_\n]+_|https?:\/\/[^\s]+/g;
 
 // ── Shared: highlight a search term inside plain text ─────────────────────
 
-function highlight(str, term) {
-  if (!term?.trim()) return [str];
-  const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return str.split(new RegExp(`(${safe})`, 'gi')).map((part, i) =>
-    part.toLowerCase() === term.toLowerCase()
+// Accepts a single term (string) or multiple (array). Highlights all of them.
+function highlight(str, terms) {
+  const list = Array.isArray(terms)
+    ? terms.filter((t) => t && t.trim())
+    : (terms && terms.trim() ? [terms] : []);
+  if (list.length === 0) return [str];
+  const escaped = list.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const lowerSet = new Set(list.map((t) => t.toLowerCase()));
+  const rx = new RegExp(`(${escaped.join('|')})`, 'gi');
+  return str.split(rx).map((part, i) =>
+    lowerSet.has(part.toLowerCase())
       ? <span key={i} style={{ background: 'var(--theme-highlight-bg)', borderRadius: '2px', padding: '0 2px' }}>{part}</span>
       : part
   );

@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Card from "./Card";
+import { matchesTask, matchesCardTitle } from "../../utils/search";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
 import { VscHistory } from "react-icons/vsc";
@@ -53,7 +54,7 @@ function SortableCardWrapper({ uid, children }) {
   );
 }
 
-function Cards({ boardId, searchTerm, quickAddSignal }) {
+function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTaskId = null, quickAddSignal }) {
   const { boards, setBoards, defaultCards } = useContext(CardsContext);
   const board = boards.find((b) => b.id === boardId);
   const [toggleModal, setToggleModal] = useState(false);
@@ -290,7 +291,17 @@ function Cards({ boardId, searchTerm, quickAddSignal }) {
             items={board.cards.map((c) => c.uid)}
             strategy={horizontalListSortingStrategy}
           >
-            {board.cards.map((card, cardIndex) => (
+            {board.cards.map((card, cardIndex) => {
+              // In filter mode, hide cards that have zero matching tasks AND
+              // whose title doesn't match either.
+              if (filterMode && query && !query.isEmpty) {
+                const titleHit = matchesCardTitle(card, query);
+                if (!titleHit) {
+                  const anyTaskHit = Object.values(card.tasks || {}).some((t) => matchesTask(t, query));
+                  if (!anyTaskHit) return null;
+                }
+              }
+              return (
               <SortableCardWrapper key={card.uid} uid={card.uid}>
                 {({ dragHandleProps }) => (
                   <Card
@@ -303,12 +314,16 @@ function Cards({ boardId, searchTerm, quickAddSignal }) {
                     updateCardTasks={updateCardTasks}
                     updateCards={updateCards}
                     searchTerm={searchTerm}
+                    query={query}
+                    filterMode={filterMode}
+                    currentMatchTaskId={currentMatchTaskId}
                     quickAddSignal={cardIndex === 0 ? quickAddSignal : 0}
                     dragHandleProps={dragHandleProps}
                   />
                 )}
               </SortableCardWrapper>
-            ))}
+              );
+            })}
           </SortableContext>
 
           {toggleModal ? (

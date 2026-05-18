@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { generateTaskID } from "../../utils/taskIdGenerator";
 import { renderTaskValue } from "../../utils/richText";
 import { sanitizeHtml, markdownToHtml, isHtml, htmlToText } from "../../utils/htmlEditor";
+import { matchesTask, matchesCardTitle } from "../../utils/search";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   VscEdit, VscCheck, VscTrash, VscSave, VscCopy, VscClose,
@@ -230,6 +231,7 @@ function SortableTask({ task, cardUid, isEditing, className, style, onContextMen
   return (
     <li
       ref={setNodeRef}
+      data-task-id={task.id}
       className={className}
       style={{ ...style, transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       {...attributes}
@@ -244,6 +246,7 @@ function SortableTask({ task, cardUid, isEditing, className, style, onContextMen
 function Card({
   index, uid, title, color, isVisible, tasks,
   updateCardTasks, updateCards, searchTerm,
+  query, filterMode = false, currentMatchTaskId = null,
   quickAddSignal = 0, dragHandleProps = {},
 }) {
   const { currentThemeId } = useTheme();
@@ -258,7 +261,7 @@ function Card({
   const [editingTaskId, setEditingTaskId]     = useState(null);
   const [editingTaskValue, setEditingTaskValue]   = useState(""); // HTML string
   const [editingTaskImages, setEditingTaskImages] = useState([]);
-  const [doneTasks, setDoneTasks]             = useState({});
+  // (done state is now persisted as task.done — see toggleDoneTask)
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [toDelete, setToDelete]               = useState("");
   const [defaultModal, setDefaultModal]       = useState(false);
@@ -333,7 +336,7 @@ function Card({
       x: e.clientX, y: e.clientY,
       items: [
         { label: "Edit task",   icon: <VscEdit />,          onClick: () => startEditingTask(task.id, task.value, task.images) },
-        { label: doneTasks[task.id] ? "Mark as undone" : "Mark as done", icon: <VscCheck />, onClick: () => toggleDoneTask(task.id) },
+        { label: task.done ? "Mark as undone" : "Mark as done", icon: <VscCheck />, onClick: () => toggleDoneTask(task.id) },
         { label: "Copy text",   icon: <VscCopy />,          onClick: () => copyTaskText(task.value) },
         { label: "Duplicate",   icon: <IoDuplicateOutline />, onClick: () => duplicateTask(task) },
         { divider: true },
@@ -461,7 +464,12 @@ function Card({
 
   const handleDeleteCard = () => { setToggleMenu(false); setToDelete("card");  setShowDeleteWarning(true); };
   const deleteAllTasks   = () => { setToggleMenu(false); setToDelete("tasks"); Object.keys(tasks).length > 0 ? setShowDeleteWarning(true) : setDefaultModal(true); };
-  const toggleDoneTask   = (taskId) => setDoneTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+  const toggleDoneTask = (taskId) => {
+    updateCardTasks(index, {
+      ...tasks,
+      [taskId]: { ...tasks[taskId], done: !tasks[taskId]?.done },
+    });
+  };
 
   // ── Image upload ───────────────────────────────────────────────────────────
 
@@ -601,7 +609,7 @@ function Card({
               onPointerDown={e => e.stopPropagation()}
               title="Double-click to rename"
             >
-              {renderTaskValue(title, searchTerm)}
+              {renderTaskValue(title, query?.terms ?? searchTerm)}
             </h5>
           )}
           <div className="w-4 h-5 text-sm rounded-sm text-center"
@@ -625,20 +633,39 @@ function Card({
       <div className="task-list max-h-[30rem] overflow-y-auto">
         <SortableContext items={Object.keys(tasks)} strategy={verticalListSortingStrategy}>
           <ul>
-            {Object.values(tasks).length > 0 ? (
-              Object.values(tasks).map((task) => (
+            {(() => {
+              const allTasks = Object.values(tasks);
+              const cardTitleMatches = query && !query.isEmpty && matchesCardTitle({ title }, query);
+              const visibleTasks = (filterMode && query && !query.isEmpty && !cardTitleMatches)
+                ? allTasks.filter((t) => matchesTask(t, query))
+                : allTasks;
+
+              if (allTasks.length === 0) {
+                return (
+                  <li className="h-8 task-item flex items-center p-2 mt-2 shadow-sm rounded-md opacity-15"
+                    style={{ background: 'var(--theme-task-bg)' }}>
+                    Drop tasks here
+                  </li>
+                );
+              }
+              if (visibleTasks.length === 0) return null;
+
+              return visibleTasks.map((task) => (
                 <SortableTask
                   key={task.id}
                   task={task}
                   cardUid={uid}
                   isEditing={editingTaskId === task.id}
                   className={`task-item flex flex-col p-2 mt-2 shadow-sm rounded-md ${
-                    doneTasks[task.id] ? "opacity-60" : ""
+                    task.done ? "opacity-60" : ""
+                  } ${task.id === currentMatchTaskId ? "task-current-match" : ""
                   } ${editingTaskId === task.id ? "" : "cursor-grab active:cursor-grabbing"}`}
                   style={{
                     background: 'var(--theme-task-bg)',
-                    border: '1px solid var(--theme-task-border)',
-                    textDecoration: doneTasks[task.id] ? 'line-through' : 'none',
+                    border: task.id === currentMatchTaskId
+                      ? '2px solid var(--theme-accent)'
+                      : '1px solid var(--theme-task-border)',
+                    textDecoration: task.done ? 'line-through' : 'none',
                   }}
                   onContextMenu={e => openTaskContextMenu(e, task)}
                 >
@@ -739,7 +766,7 @@ function Card({
                           className="text-sm font-medium flex-1"
                           style={{ color: 'var(--theme-text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                         >
-                          {renderTaskValue(task.value, searchTerm)}
+                          {renderTaskValue(task.value, query?.terms ?? searchTerm)}
                         </div>
                       </div>
 
@@ -761,7 +788,7 @@ function Card({
 
                       <div className="flex justify-between items-center w-full mt-2">
                         <h4 className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
-                          {renderTaskValue(task.id, searchTerm)}
+                          {renderTaskValue(task.id, query?.terms ?? searchTerm)}
                         </h4>
                         <div className="flex items-center space-x-2">
                           <button
@@ -800,13 +827,8 @@ function Card({
                     </>
                   )}
                 </SortableTask>
-              ))
-            ) : (
-              <li className="h-8 task-item flex items-center p-2 mt-2 shadow-sm rounded-md opacity-15"
-                style={{ background: 'var(--theme-task-bg)' }}>
-                Drop tasks here
-              </li>
-            )}
+              ));
+            })()}
           </ul>
         </SortableContext>
       </div>

@@ -54,7 +54,7 @@ const start = async () => {
     console.log('✅ Database tables synced');
 
     app.listen(PORT, () => {
-      console.log(`🚀 KanDoo API server running on http://localhost:${PORT}`);
+      console.log(`🚀 Kandoo API server running on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);

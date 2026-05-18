@@ -67,7 +67,7 @@ const SECTIONS = [
           <>Click a card to add tasks. Drag cards or tasks to reorder.</>,
           <>Everything autosaves — locally and to your account when online.</>,
         ]} />
-        <Tip>Press <Kbd>?</Kbd> anywhere to see a quick keyboard shortcut cheat sheet.</Tip>
+        <Tip>Press <Kbd>⌘ / Ctrl</Kbd> + <Kbd>Shift</Kbd> + <Kbd>1</Kbd> anywhere to reopen this guide.</Tip>
       </>
     ),
   },
@@ -356,14 +356,14 @@ const SECTIONS = [
     content: (
       <>
         <H2>Keyboard shortcuts</H2>
-        <P>Press <Kbd>?</Kbd> anywhere to bring up the dedicated shortcuts cheat sheet. Quick reference:</P>
+        <P>Quick reference — these work anywhere on the board:</P>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem', fontSize: '0.88rem' }}>
           <tbody>
             {[
+              ['Open this Help guide',  <><Kbd>⌘ / Ctrl</Kbd> + <Kbd>Shift</Kbd> + <Kbd>1</Kbd></>],
               ['Focus search',          <><Kbd>⌘ / Ctrl</Kbd> + <Kbd>K</Kbd> or <Kbd>/</Kbd></>],
               ['Quick-add task',        <Kbd>N</Kbd>],
               ['Cycle theme',           <Kbd>T</Kbd>],
-              ['Shortcuts help',        <Kbd>?</Kbd>],
               ['Undo',                  <><Kbd>⌘ / Ctrl</Kbd> + <Kbd>Z</Kbd></>],
               ['Redo',                  <><Kbd>⌘ / Ctrl</Kbd> + <Kbd>Shift</Kbd> + <Kbd>Z</Kbd></>],
               ['Bold / Italic / Underline (while editing)', <><Kbd>⌘ / Ctrl</Kbd> + <Kbd>B</Kbd> / <Kbd>I</Kbd> / <Kbd>U</Kbd></>],

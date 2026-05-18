@@ -135,8 +135,16 @@ function Board() {
     setTheme(next.id);
   });
 
-  // ? opens shortcuts help
+  // ? opens shortcuts help (kept as a bonus, but works inconsistently across
+  // keyboard layouts — the documented shortcut is mod+shift+1 below).
   useHotkeys('?', () => setShowShortcutsHelp(true));
+  useHotkeys('shift+/', () => setShowShortcutsHelp(true));
+
+  // Cmd/Ctrl+Shift+1 opens the full Help / Features guide modal
+  useHotkeys('mod+shift+1', (e) => {
+    e.preventDefault();
+    setShowHelpModal(true);
+  });
 
   // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (or Cmd/Ctrl+Y) = redo
   // Hotkeys don't fire in inputs/textareas by default, so native browser undo still works while typing.

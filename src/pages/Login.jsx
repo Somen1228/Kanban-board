@@ -168,7 +168,7 @@ function Login() {
       )}
       <div className="login-card">
         <div className="login-logo">
-          <img src={kandooLogo} alt="KanDoo" className="login-logo-img" />
+          <img src={kandooLogo} alt="Kandoo" className="login-logo-img" />
           <h1>Kandoo</h1>
           <p>Plan It Like You Kan, Do It Like You Do.</p>
         </div>

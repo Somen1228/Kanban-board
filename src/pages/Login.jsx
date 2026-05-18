@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import KandooLoader from '../components/KandooLoader';
 import kandooLogo from '../assets/kanban-logo.png';
 import './Login.css';
 
@@ -19,6 +20,9 @@ function Login() {
   const [activeTab, setActiveTab] = useState('google');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Stays true after a successful sign-in until <Navigate /> unmounts us.
+  // Covers the gap between Firebase resolving the credential and onAuthStateChanged firing.
+  const [redirecting, setRedirecting] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
   // Email form state
@@ -41,6 +45,7 @@ function Login() {
     clearError();
     try {
       await signInWithGoogle(rememberMe);
+      setRedirecting(true); // keep the loader up until Navigate fires
     } catch {
       // error is set by AuthContext
     } finally {
@@ -58,6 +63,7 @@ function Login() {
       } else {
         await signInWithEmail(emailForm.email, emailForm.password, rememberMe);
       }
+      setRedirecting(true);
     } catch {
       // error is set by AuthContext
     } finally {
@@ -89,6 +95,7 @@ function Login() {
     try {
       const otpString = otp.join('');
       await verifyPhoneOtp(otpString);
+      setRedirecting(true);
     } catch {
       // error is set by AuthContext
     } finally {
@@ -156,6 +163,9 @@ function Login() {
 
   return (
     <div className="login-page">
+      {redirecting && (
+        <KandooLoader fullscreen message="Signing you in — loading your workspace…" />
+      )}
       <div className="login-card">
         <div className="login-logo">
           <img src={kandooLogo} alt="KanDoo" className="login-logo-img" />

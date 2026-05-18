@@ -457,7 +457,7 @@ function Board() {
                   <div className="flex items-center rounded-3xl px-2 py-1" style={{
                     border: '1px solid var(--theme-border)',
                     background: 'var(--theme-bg-input)',
-                    minWidth: 500,
+                    minWidth: 280,
                   }}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pt-0.5"
                       style={{ color: 'var(--theme-text-secondary)' }}

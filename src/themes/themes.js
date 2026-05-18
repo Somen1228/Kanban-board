@@ -1,5 +1,5 @@
 /**
- * KanDoo Theme Definitions
+ * Kandoo Theme Definitions
  *
  * Each theme defines CSS variable tokens for the entire UI.
  * Custom themes must match this schema to be valid.

@@ -1,8 +1,20 @@
 // HTML sanitization, markdown→HTML migration, and html→plain-text helpers
 // for the contentEditable rich-text editor in tasks.
 
-const ALLOWED_TAGS = new Set(['STRONG', 'B', 'EM', 'I', 'U', 'BR', 'DIV', 'P', 'A', 'SPAN']);
-const ALLOWED_ATTRS = { A: ['href', 'target', 'rel'] };
+const ALLOWED_TAGS = new Set([
+  'STRONG', 'B', 'EM', 'I', 'U', 'BR', 'DIV', 'P', 'A', 'SPAN',
+  // Note-editor extensions
+  'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'BLOCKQUOTE',
+  // Code block + inline code
+  'PRE', 'CODE',
+]);
+const ALLOWED_ATTRS = {
+  A: ['href', 'target', 'rel'],
+  // Class names are needed for hljs syntax highlighting + language chip
+  PRE:  ['class', 'data-lang'],
+  CODE: ['class'],
+  SPAN: ['class'],
+};
 
 export function sanitizeHtml(html) {
   if (!html) return '';
@@ -39,7 +51,7 @@ export function sanitizeHtml(html) {
   return root.innerHTML;
 }
 
-const HTML_TAG_RX = /<(strong|b|em|i|u|br|div|p|a|span)\b/i;
+const HTML_TAG_RX = /<(strong|b|em|i|u|br|div|p|a|span|h[1-3]|ul|ol|li|blockquote|pre|code)\b/i;
 export function isHtml(value) {
   return HTML_TAG_RX.test(value || '');
 }

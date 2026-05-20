@@ -53,6 +53,23 @@ export function parseExportFile(text) {
       if (c.tasks != null && (typeof c.tasks !== 'object' || Array.isArray(c.tasks))) {
         throw new Error(`Card "${c.title}" has an invalid tasks object`);
       }
+      // Validate note shape if present
+      if (c.note != null) {
+        if (typeof c.note !== 'object' || Array.isArray(c.note)) {
+          throw new Error(`Card "${c.title}" has an invalid note object`);
+        }
+        if (c.note.content != null && typeof c.note.content !== 'string') {
+          throw new Error(`Note in "${c.title}" has an invalid content`);
+        }
+        if (c.note.images != null) {
+          if (!Array.isArray(c.note.images)) throw new Error(`Note in "${c.title}" has invalid images`);
+          for (const img of c.note.images) {
+            if (typeof img !== 'string' || !/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,/i.test(img)) {
+              throw new Error(`Note in "${c.title}" has an unsafe image attachment`);
+            }
+          }
+        }
+      }
       for (const t of Object.values(c.tasks || {})) {
         if (!t || typeof t.value !== 'string') {
           throw new Error(`A task in "${c.title}" has an invalid value`);
@@ -60,7 +77,6 @@ export function parseExportFile(text) {
         if (t.images != null) {
           if (!Array.isArray(t.images)) throw new Error(`A task in "${c.title}" has invalid images`);
           for (const img of t.images) {
-            // Only accept image data URLs — blocks data:text/html etc.
             if (typeof img !== 'string' || !/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,/i.test(img)) {
               throw new Error(`A task in "${c.title}" has an unsafe image attachment`);
             }
@@ -128,10 +144,20 @@ export async function downloadBoardsAsXlsx(boards, filename) {
   for (const board of boards) {
     const sheetName = sanitizeSheetName(board.title, usedSheetNames);
     const cards = board.cards || [];
-    // Header row = card titles
-    const headers = cards.map((c) => c.title || '(untitled)');
-    // Build column-oriented data: each column = card, each row = a task
-    const taskColumns = cards.map((c) => Object.values(c.tasks || {}).map(taskToCell));
+    // Header row = card titles (note cards get a [Note] suffix)
+    const headers = cards.map((c) => (c.type === 'note' ? `${c.title || '(untitled)'} [Note]` : (c.title || '(untitled)')));
+    // Build column-oriented data: each column = card.
+    // - todo: each row = one task
+    // - note: a single row with the note's plain-text content
+    const taskColumns = cards.map((c) => {
+      if (c.type === 'note') {
+        const text = htmlToText(c.note?.content || '');
+        const imgCount = c.note?.images?.length || 0;
+        const cell = text + (imgCount > 0 ? `${text ? '\n' : ''}[${imgCount} image${imgCount > 1 ? 's' : ''}]` : '');
+        return cell ? [cell] : [];
+      }
+      return Object.values(c.tasks || {}).map(taskToCell);
+    });
     const maxRows = taskColumns.reduce((m, col) => Math.max(m, col.length), 0);
 
     // aoa = array-of-arrays, row-major

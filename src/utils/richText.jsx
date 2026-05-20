@@ -103,6 +103,26 @@ function htmlNodeToReact(node, searchTerm, keyGen) {
     case 'u':                 return <u key={keyGen()}>{children}</u>;
     case 'br':                return <br key={keyGen()} />;
     case 'div': case 'p':     return <div key={keyGen()}>{children}</div>;
+    case 'h1':                return <h1 key={keyGen()} style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0.4rem 0' }}>{children}</h1>;
+    case 'h2':                return <h2 key={keyGen()} style={{ fontSize: '1.1rem',  fontWeight: 600, margin: '0.35rem 0' }}>{children}</h2>;
+    case 'h3':                return <h3 key={keyGen()} style={{ fontSize: '1rem',    fontWeight: 600, margin: '0.3rem 0' }}>{children}</h3>;
+    case 'ul':                return <ul key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'disc',    margin: '0.25rem 0' }}>{children}</ul>;
+    case 'ol':                return <ol key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'decimal', margin: '0.25rem 0' }}>{children}</ol>;
+    case 'li':                return <li key={keyGen()}>{children}</li>;
+    case 'blockquote':        return <blockquote key={keyGen()} style={{ borderLeft: '3px solid var(--theme-border)', paddingLeft: '0.6rem', margin: '0.3rem 0', color: 'var(--theme-text-secondary)' }}>{children}</blockquote>;
+    case 'pre': {
+      // Render code blocks with their classes intact (hljs spans inside)
+      const lang = node.getAttribute('data-lang');
+      return (
+        <pre key={keyGen()} data-lang={lang || undefined} className="kandoo-code-block">
+          {children}
+        </pre>
+      );
+    }
+    case 'code': {
+      const className = node.getAttribute('class') || '';
+      return <code key={keyGen()} className={className}>{children}</code>;
+    }
     case 'a': {
       const href = node.getAttribute('href');
       if (href && /^https?:\/\//.test(href)) {

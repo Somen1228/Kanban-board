@@ -20,6 +20,7 @@ import DefaultModal from "./DefaultModal.jsx";
 import ContextMenu from "../ContextMenu.jsx";
 import ImageModal from "./ImageModal.jsx";
 import RichEditor from "./RichEditor.jsx";
+import NoteCard from "./NoteCard.jsx";
 
 const PROTECTED_COLUMN_TITLES = new Set(["To-do", "In-Progress", "Done"]);
 
@@ -131,11 +132,12 @@ function SortableTask({ task, cardUid, isEditing, className, style, onContextMen
 }
 
 function Card({
-  index, uid, title, color, isVisible, tasks,
-  updateCardTasks, updateCards, searchTerm,
+  index, uid, type = 'todo', title, color, isVisible, tasks, note,
+  updateCardTasks, updateCardNote, updateCards, searchTerm,
   query, filterMode = false, currentMatchTaskId = null,
   quickAddSignal = 0, dragHandleProps = {},
 }) {
+  const isNote = type === 'note';
   const { currentThemeId } = useTheme();
   const [isMounted, setIsMounted]             = useState(false);
   const [toggleAddTask, setToggleAddTask]     = useState(false);
@@ -488,6 +490,17 @@ function Card({
         </div>
       </div>
 
+      {/* Body: note editor for note cards, task list for todo cards */}
+      {isNote ? (
+        <NoteCard
+          index={index}
+          note={note}
+          updateCardNote={updateCardNote}
+          title={title}
+          cardColor={cardColor}
+        />
+      ) : (
+      <>
       {/* Task list */}
       <div className="task-list max-h-[30rem] overflow-y-auto">
         <SortableContext items={Object.keys(tasks)} strategy={verticalListSortingStrategy}>
@@ -803,6 +816,8 @@ function Card({
         style={{ display: 'none' }}
         onChange={handleNewUpload}
       />
+      </>
+      )}
 
       {showDeleteWarning && (
         <DeleteWarningModal

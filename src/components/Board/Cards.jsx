@@ -24,7 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Card from "./Card";
-import { matchesTask, matchesCardTitle } from "../../utils/search";
+import { matchesTask, matchesCardTitle, matchesNote } from "../../utils/search";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
 import { VscHistory } from "react-icons/vsc";
@@ -55,6 +55,7 @@ function SortableCardWrapper({ uid, children }) {
 }
 
 function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTaskId = null, quickAddSignal }) {
+  const [section, setSection] = useState('todos'); // 'todos' | 'notes'
   const { boards, setBoards, defaultCards } = useContext(CardsContext);
   const board = boards.find((b) => b.id === boardId);
   const [toggleModal, setToggleModal] = useState(false);
@@ -70,8 +71,16 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
   );
 
   const addCard = useCallback(
-    (title, color) => {
-      const newCard = { uid: uuidv4(), title, color, isVisible: false, tasks: {} };
+    (title, color, type = 'todo') => {
+      const newCard = {
+        uid: uuidv4(),
+        type,
+        title,
+        color,
+        isVisible: false,
+        tasks: {},
+        ...(type === 'note' ? { note: { content: '', images: [], updatedAt: Date.now() } } : {}),
+      };
       setBoards((prevBoards) =>
         prevBoards.map((b) =>
           b.id === boardId ? { ...b, cards: [...b.cards, newCard] } : b
@@ -94,6 +103,24 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
         );
       }, 10);
       setToggleModal(false);
+    },
+    [boardId, setBoards]
+  );
+
+  const updateCardNote = useCallback(
+    (cardIndex, note) => {
+      setBoards((prevBoards) =>
+        prevBoards.map((b) =>
+          b.id === boardId
+            ? {
+                ...b,
+                cards: b.cards.map((card, i) =>
+                  i === cardIndex ? { ...card, note: { ...note, updatedAt: Date.now() } } : card
+                ),
+              }
+            : b
+        )
+      );
     },
     [boardId, setBoards]
   );
@@ -266,7 +293,67 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
   return (
     <div>
       <div className="pl-10 option-container mb-4 w-auto">
-        <div className="flex items-center justify-end">
+        <div className="flex items-end justify-between">
+          {/* Section tabs — browser-style */}
+          <div
+            role="tablist"
+            aria-label="Card section"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: '2px',
+              borderBottom: '1px solid var(--theme-border)',
+              marginBottom: '-1px',
+            }}
+          >
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'notes', label: 'Notes' },
+            ].map((s) => {
+              const isActive = section === s.id;
+              const count = (board?.cards || []).filter((c) =>
+                s.id === 'notes' ? c.type === 'note' : (c.type || 'todo') === 'todo'
+              ).length;
+              return (
+                <button
+                  key={s.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setSection(s.id)}
+                  style={{
+                    background: isActive ? 'var(--theme-bg-primary)' : 'transparent',
+                    color: isActive ? 'var(--theme-text-primary)' : 'var(--theme-text-muted)',
+                    border: '1px solid',
+                    borderColor: isActive ? 'var(--theme-border)' : 'transparent',
+                    borderBottomColor: isActive ? 'var(--theme-bg-primary)' : 'transparent',
+                    borderTopLeftRadius: '0.5rem',
+                    borderTopRightRadius: '0.5rem',
+                    padding: '6px 14px 7px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: isActive ? 600 : 500,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'background 0.15s, color 0.15s',
+                    position: 'relative',
+                    top: '1px',
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--theme-text-primary)'; }}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--theme-text-muted)'; }}
+                >
+                  {s.label}
+                  <span style={{
+                    fontSize: '0.65rem',
+                    padding: '1px 6px',
+                    borderRadius: 999,
+                    background: isActive ? 'var(--theme-bg-hover)' : 'var(--theme-bg-secondary)',
+                    color: 'var(--theme-text-secondary)',
+                    minWidth: 16, textAlign: 'center',
+                  }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <button
             onClick={handleResetClick}
             className="header-icon-btn"
@@ -288,17 +375,26 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
       >
         <div className="container pl-10">
           <SortableContext
-            items={board.cards.map((c) => c.uid)}
+            items={board.cards
+              .filter((c) => (section === 'notes' ? c.type === 'note' : (c.type || 'todo') === 'todo'))
+              .map((c) => c.uid)}
             strategy={horizontalListSortingStrategy}
           >
             {board.cards.map((card, cardIndex) => {
+              // Section filter — Todos tab hides notes, Notes tab hides everything else
+              const cardType = card.type || 'todo';
+              if (section === 'notes' && cardType !== 'note') return null;
+              if (section === 'todos' && cardType === 'note') return null;
+
               // In filter mode, hide cards that have zero matching tasks AND
               // whose title doesn't match either.
               if (filterMode && query && !query.isEmpty) {
                 const titleHit = matchesCardTitle(card, query);
                 if (!titleHit) {
-                  const anyTaskHit = Object.values(card.tasks || {}).some((t) => matchesTask(t, query));
-                  if (!anyTaskHit) return null;
+                  const hit = card.type === 'note'
+                    ? matchesNote(card, query)
+                    : Object.values(card.tasks || {}).some((t) => matchesTask(t, query));
+                  if (!hit) return null;
                 }
               }
               return (
@@ -307,11 +403,14 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
                   <Card
                     index={cardIndex}
                     uid={card.uid}
+                    type={card.type || 'todo'}
                     title={card.title}
                     color={card.color}
                     isVisible={card.isVisible}
                     tasks={card.tasks}
+                    note={card.note}
                     updateCardTasks={updateCardTasks}
+                    updateCardNote={updateCardNote}
                     updateCards={updateCards}
                     searchTerm={searchTerm}
                     query={query}
@@ -327,10 +426,15 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
           </SortableContext>
 
           {toggleModal ? (
-            <Modal ref={modalRef} addCard={addCard} cards={board.cards} />
+            <Modal
+              ref={modalRef}
+              addCard={addCard}
+              cards={board.cards}
+              initialType={section === 'notes' ? 'note' : 'todo'}
+            />
           ) : (
             <button onClick={() => setToggleModal(true)} className="add-btn">
-              + Add Card
+              + Add {section === 'notes' ? 'Note' : 'Card'}
             </button>
           )}
 

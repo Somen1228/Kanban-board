@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import "./index.css";
+// Syntax highlighting theme for note code blocks (highlight.js)
+import "highlight.js/styles/github-dark.css";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { CardsProvider } from "./contexts/CardsContext.jsx";

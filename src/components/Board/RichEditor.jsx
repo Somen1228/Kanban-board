@@ -9,6 +9,7 @@ const RichEditor = forwardRef(function RichEditor({
   onChange,
   onSave,
   onCancel,
+  onBlur,
   className = '',
   style,
   placeholder = '',
@@ -24,6 +25,7 @@ const RichEditor = forwardRef(function RichEditor({
 
   useImperativeHandle(ref, () => ({
     focus: () => editorRef.current?.focus(),
+    getElement: () => editorRef.current,
     getHtml: () => editorRef.current?.innerHTML || '',
     setHtml: (html) => {
       if (!editorRef.current) return;
@@ -31,11 +33,11 @@ const RichEditor = forwardRef(function RichEditor({
       updateEmptyState();
       onChange?.(editorRef.current.innerHTML);
     },
-    exec: (cmd) => {
+    exec: (cmd, value = null) => {
       const el = editorRef.current;
       if (!el) return;
       el.focus();
-      document.execCommand(cmd, false);
+      document.execCommand(cmd, false, value);
       updateEmptyState();
       onChange?.(el.innerHTML);
     },
@@ -111,6 +113,7 @@ const RichEditor = forwardRef(function RichEditor({
       onInput={handleInput}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
+      onBlur={onBlur}
       className={`rich-editor ${className}`}
       style={style}
       data-placeholder={placeholder}

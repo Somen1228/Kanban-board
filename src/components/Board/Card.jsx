@@ -630,9 +630,8 @@ function Card({
                       <div
                         className="task-container flex justify-between items-start w-full"
                         onDoubleClick={() => startEditingTask(task.id, task.value, task.images)}
-                        title="Double-click to edit"
-                        style={{ cursor: 'text' }}
-                        onPointerDown={e => e.stopPropagation()}
+                        title="Drag to move · double-click to edit"
+                        style={{ userSelect: 'none' }}
                       >
                         <div
                           className="text-sm font-medium flex-1"

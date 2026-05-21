@@ -4,6 +4,7 @@ import {
   useEffect,
   useCallback,
   useContext,
+  useMemo,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Card from "./Card";
+import NotesView from "./NotesView";
 import { matchesTask, matchesCardTitle, matchesNote } from "../../utils/search";
 import Modal from "./Modal";
 import { CardsContext } from "../../contexts/CardsContext";
@@ -56,8 +58,35 @@ function SortableCardWrapper({ uid, children }) {
 
 function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTaskId = null, quickAddSignal }) {
   const [section, setSection] = useState('todos'); // 'todos' | 'notes'
+  const [activeNoteUid, setActiveNoteUid] = useState(null);
   const { boards, setBoards, defaultCards } = useContext(CardsContext);
   const board = boards.find((b) => b.id === boardId);
+
+  // Notes-section helpers
+  const notesCards = useMemo(
+    () => (board?.cards || []).filter((c) => c.type === 'note'),
+    [board?.cards]
+  );
+
+  // Keep activeNoteUid valid as notes get added/deleted/loaded
+  useEffect(() => {
+    if (section !== 'notes') return;
+    if (notesCards.length === 0) { setActiveNoteUid(null); return; }
+    if (!notesCards.some((n) => n.uid === activeNoteUid)) {
+      // Default to the most recently created note (last in array)
+      setActiveNoteUid(notesCards[notesCards.length - 1].uid);
+    }
+  }, [notesCards, section, activeNoteUid]);
+
+  const deleteNoteByUid = (uid) => {
+    setBoards((prev) =>
+      prev.map((b) =>
+        b.id === boardId ? { ...b, cards: b.cards.filter((c) => c.uid !== uid) } : b
+      )
+    );
+    // toast hint with built-in undo affordance
+    // (the global Cmd+Z undo restores everything; the toast just makes it discoverable)
+  };
   const [toggleModal, setToggleModal] = useState(false);
   const modalRef = useRef(null);
   const [warningBoardReset, setWarningBoardReset] = useState(false);
@@ -308,7 +337,7 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
           >
             {[
               { id: 'todos', label: 'Todos' },
-              { id: 'notes', label: 'Notes' },
+              { id: 'notes', label: 'Notes (Beta)' },
             ].map((s) => {
               const isActive = section === s.id;
               const count = (board?.cards || []).filter((c) =>
@@ -366,6 +395,35 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
         </div>
       </div>
 
+      {section === 'notes' ? (
+        <>
+          <NotesView
+            allCards={board.cards}
+            notes={notesCards}
+            activeUid={activeNoteUid}
+            onSelectNote={setActiveNoteUid}
+            onAddNote={() => setToggleModal(true)}
+            onDeleteNote={(uid) => {
+              deleteNoteByUid(uid);
+              if (uid === activeNoteUid) setActiveNoteUid(null);
+            }}
+            updateCardNote={updateCardNote}
+            updateCards={updateCards}
+          />
+
+          {toggleModal && (
+            <Modal
+              ref={modalRef}
+              addCard={(title, color, type) => {
+                addCard(title, color, type);
+                // After adding, the sync effect picks the new note as active
+              }}
+              cards={board.cards}
+              initialType="note"
+            />
+          )}
+        </>
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -497,6 +555,7 @@ function Cards({ boardId, searchTerm, query, filterMode = false, currentMatchTas
           })()}
         </DragOverlay>
       </DndContext>
+      )}
     </div>
   );
 }

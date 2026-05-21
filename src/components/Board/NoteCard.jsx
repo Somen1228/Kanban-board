@@ -4,15 +4,21 @@ import { toast } from 'sonner';
 import {
   VscBold, VscItalic, VscClose,
   VscScreenFull, VscListUnordered, VscListOrdered, VscCode,
+  VscClearAll, VscLink, VscHorizontalRule, VscQuote,
 } from 'react-icons/vsc';
-import { RiUnderline, RiHeading } from 'react-icons/ri';
+import {
+  RiUnderline, RiStrikethrough, RiSuperscript, RiSubscript,
+  RiAlignLeft, RiAlignCenter, RiAlignRight, RiAlignJustify,
+  RiIndentIncrease, RiIndentDecrease,
+  RiFontColor, RiMarkPenLine, RiCodeSSlashLine,
+} from 'react-icons/ri';
 import { IoImageOutline } from 'react-icons/io5';
 import RichEditor from './RichEditor';
 import ImageModal from './ImageModal';
 import { sanitizeHtml, isHtml, markdownToHtml, htmlToText } from '../../utils/htmlEditor';
 
 // ── Shared image compression util (mirrored from Card.jsx) ─────────────────
-const compressImage = (file) =>
+export const compressImage = (file) =>
   new Promise((resolve, reject) => {
     if (file.size > 10 * 1024 * 1024) { reject(new Error('Image must be smaller than 10 MB')); return; }
     const reader = new FileReader();
@@ -54,7 +60,7 @@ function insertCodeBlock(editorRef) {
 
 // Iterate <pre><code> blocks in the editor DOM and run hljs.highlightAuto.
 // Skips re-highlighting blocks that already match their current text + lang.
-async function applyHighlighting(editorEl) {
+export async function applyHighlighting(editorEl) {
   if (!editorEl) return;
   const codes = editorEl.querySelectorAll('pre > code');
   if (codes.length === 0) return;
@@ -76,9 +82,11 @@ async function applyHighlighting(editorEl) {
 }
 
 // ── Toolbar shared by inline and expanded views ─────────────────────────────
-function NoteToolbar({ editorRef, onUploadClick, compact = false }) {
-  const apply  = (cmd, value)    => editorRef.current?.exec(cmd, value);
+export function NoteToolbar({ editorRef, onUploadClick, compact = false }) {
+  const apply = (cmd, value) => editorRef.current?.exec(cmd, value);
   const mod = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl';
+  const textColorRef = useRef(null);
+  const hiliteColorRef = useRef(null);
 
   const btnStyle = {
     background: 'transparent',
@@ -86,62 +94,143 @@ function NoteToolbar({ editorRef, onUploadClick, compact = false }) {
     borderRadius: '0.25rem',
     color: 'var(--theme-text-secondary)',
     cursor: 'pointer',
-    padding: compact ? '2px 5px' : '4px 8px',
+    padding: compact ? '2px 5px' : '4px 7px',
     fontSize: compact ? '0.8rem' : '0.95rem',
-    display: 'flex', alignItems: 'center',
+    display: 'flex', alignItems: 'center', gap: 2,
     transition: 'background 0.12s',
   };
   const hover = (e) => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; };
   const leave = (e) => { e.currentTarget.style.background = 'transparent'; };
+  const Divider = () => (
+    <span style={{ width: 1, background: 'var(--theme-border)', margin: '2px 4px', alignSelf: 'stretch' }} />
+  );
+
+  const Btn = ({ title, onClick, children }) => (
+    <button type="button" style={btnStyle} title={title}
+      onMouseEnter={hover} onMouseLeave={leave}
+      onClick={onClick}>
+      {children}
+    </button>
+  );
+
+  const promptLink = () => {
+    const sel = window.getSelection();
+    const initial = sel?.toString()?.match(/^https?:\/\//i) ? sel.toString() : 'https://';
+    // eslint-disable-next-line no-alert
+    const url = window.prompt('Link URL:', initial);
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      // require http(s) to keep sanitizer happy
+      // eslint-disable-next-line no-alert
+      window.alert('Link must start with http:// or https://');
+      return;
+    }
+    apply('createLink', url);
+  };
+
+  const onHeadingChange = (e) => {
+    const v = e.target.value;
+    e.target.value = ''; // reset so user can re-pick the same option
+    if (v) apply('formatBlock', v);
+  };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', borderBottom: '1px solid var(--theme-border)', paddingBottom: '4px', marginBottom: '6px' }}
-         onMouseDown={(e) => e.preventDefault()}>
-      <button type="button" style={btnStyle} title={`Heading (${mod}+Alt+2)`}
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('formatBlock', 'H2')}>
-        <RiHeading />
-      </button>
-      <button type="button" style={btnStyle} title={`Bold (${mod}+B)`}
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('bold')}>
-        <VscBold />
-      </button>
-      <button type="button" style={btnStyle} title={`Italic (${mod}+I)`}
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('italic')}>
-        <VscItalic />
-      </button>
-      <button type="button" style={btnStyle} title={`Underline (${mod}+U)`}
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('underline')}>
-        <RiUnderline />
-      </button>
-      <span style={{ width: 1, background: 'var(--theme-border)', margin: '2px 4px' }} />
-      <button type="button" style={btnStyle} title="Bullet list"
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('insertUnorderedList')}>
-        <VscListUnordered />
-      </button>
-      <button type="button" style={btnStyle} title="Numbered list"
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => apply('insertOrderedList')}>
-        <VscListOrdered />
-      </button>
-      <span style={{ width: 1, background: 'var(--theme-border)', margin: '2px 4px' }} />
-      <button type="button" style={btnStyle} title="Code block (auto language)"
-        onMouseEnter={hover} onMouseLeave={leave}
-        onClick={() => insertCodeBlock(editorRef)}>
-        <VscCode />
-      </button>
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'center',
+      borderBottom: '1px solid var(--theme-border)', paddingBottom: '4px', marginBottom: '6px',
+    }}
+      onMouseDown={(e) => e.preventDefault()}>
+      {/* Heading selector */}
+      <select
+        defaultValue=""
+        onChange={onHeadingChange}
+        title="Heading"
+        style={{
+          background: 'var(--theme-bg-input)', color: 'var(--theme-text-primary)',
+          border: '1px solid var(--theme-border)', borderRadius: 4,
+          fontSize: compact ? '0.72rem' : '0.78rem', padding: '2px 4px',
+          cursor: 'pointer', marginRight: 2,
+        }}
+      >
+        <option value="" disabled>Style</option>
+        <option value="P">Normal</option>
+        <option value="H1">Heading 1</option>
+        <option value="H2">Heading 2</option>
+        <option value="H3">Heading 3</option>
+        <option value="H4">Heading 4</option>
+        <option value="H5">Heading 5</option>
+        <option value="H6">Heading 6</option>
+      </select>
+
+      <Divider />
+
+      {/* Inline text */}
+      <Btn title={`Bold (${mod}+B)`}        onClick={() => apply('bold')}><VscBold /></Btn>
+      <Btn title={`Italic (${mod}+I)`}      onClick={() => apply('italic')}><VscItalic /></Btn>
+      <Btn title={`Underline (${mod}+U)`}   onClick={() => apply('underline')}><RiUnderline /></Btn>
+      <Btn title="Strikethrough"            onClick={() => apply('strikeThrough')}><RiStrikethrough /></Btn>
+      <Btn title="Superscript"              onClick={() => apply('superscript')}><RiSuperscript /></Btn>
+      <Btn title="Subscript"                onClick={() => apply('subscript')}><RiSubscript /></Btn>
+      <Btn title="Inline code"              onClick={() => apply('inlineCode')}><RiCodeSSlashLine /></Btn>
+      <Btn title="Clear formatting"         onClick={() => apply('clearFormatting')}><VscClearAll /></Btn>
+
+      <Divider />
+
+      {/* Color + Highlight (custom only via native picker) */}
+      <Btn title="Text colour" onClick={() => textColorRef.current?.click()}>
+        <RiFontColor />
+      </Btn>
+      <input ref={textColorRef} type="color" defaultValue="#000000"
+        onChange={(e) => apply('foreColor', e.target.value)}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
+      <Btn title="Highlight colour" onClick={() => hiliteColorRef.current?.click()}>
+        <RiMarkPenLine />
+      </Btn>
+      <input ref={hiliteColorRef} type="color" defaultValue="#fff59d"
+        onChange={(e) => {
+          // hiliteColor in Firefox uses backColor; try hiliteColor first then fall back
+          if (!document.execCommand('hiliteColor', false, e.target.value)) {
+            apply('backColor', e.target.value);
+          } else {
+            apply('hiliteColor', e.target.value);
+          }
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
+
+      <Divider />
+
+      {/* Lists */}
+      <Btn title="Bullet list"   onClick={() => apply('insertUnorderedList')}><VscListUnordered /></Btn>
+      <Btn title="Numbered list" onClick={() => apply('insertOrderedList')}><VscListOrdered /></Btn>
+
+      <Divider />
+
+      {/* Alignment */}
+      <Btn title="Align left"    onClick={() => apply('justifyLeft')}><RiAlignLeft /></Btn>
+      <Btn title="Align center"  onClick={() => apply('justifyCenter')}><RiAlignCenter /></Btn>
+      <Btn title="Align right"   onClick={() => apply('justifyRight')}><RiAlignRight /></Btn>
+      <Btn title="Justify"       onClick={() => apply('justifyFull')}><RiAlignJustify /></Btn>
+
+      <Divider />
+
+      {/* Indent */}
+      <Btn title="Decrease indent" onClick={() => apply('outdent')}><RiIndentDecrease /></Btn>
+      <Btn title="Increase indent" onClick={() => apply('indent')}><RiIndentIncrease /></Btn>
+
+      <Divider />
+
+      {/* Insert blocks */}
+      <Btn title="Quote"                onClick={() => apply('formatBlock', 'BLOCKQUOTE')}><VscQuote /></Btn>
+      <Btn title="Code block (auto language)" onClick={() => insertCodeBlock(editorRef)}><VscCode /></Btn>
+      <Btn title="Horizontal rule"      onClick={() => apply('insertHorizontalRule')}><VscHorizontalRule /></Btn>
+      <Btn title={`Hyperlink (${mod}+K)`} onClick={promptLink}><VscLink /></Btn>
+
       {onUploadClick && (
         <>
-          <span style={{ width: 1, background: 'var(--theme-border)', margin: '2px 4px' }} />
-          <button type="button" style={btnStyle} title="Add image"
-            onMouseEnter={hover} onMouseLeave={leave}
-            onClick={onUploadClick}>
-            <IoImageOutline />
-          </button>
+          <Divider />
+          <Btn title="Add image" onClick={onUploadClick}><IoImageOutline /></Btn>
         </>
       )}
     </div>
@@ -149,7 +238,7 @@ function NoteToolbar({ editorRef, onUploadClick, compact = false }) {
 }
 
 // ── Image strip (used inline + in expanded view) ────────────────────────────
-function ImageStrip({ images, onRemove, onView, thumbSize = 64 }) {
+export function ImageStrip({ images, onRemove, onView, thumbSize = 64 }) {
   if (!images || images.length === 0) return null;
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', justifyContent: 'flex-start' }}>

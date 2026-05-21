@@ -245,3 +245,53 @@ body {
   font-size: 0.85em;
   color: var(--theme-text-primary);
 }
+
+/* Note editor — extended formatting */
+.rich-editor h4 { font-size: 1rem;   font-weight: 600; margin: 0.3rem 0; }
+.rich-editor h5 { font-size: 0.9rem; font-weight: 600; margin: 0.3rem 0; }
+.rich-editor h6 { font-size: 0.8rem; font-weight: 600; margin: 0.3rem 0; }
+.rich-editor s,
+.rich-editor strike,
+.rich-editor del { text-decoration: line-through; }
+.rich-editor sup { font-size: 0.7em; vertical-align: super; }
+.rich-editor sub { font-size: 0.7em; vertical-align: sub; }
+.rich-editor hr  {
+  border: none;
+  border-top: 1px solid var(--theme-border);
+  margin: 0.6rem 0;
+}
+.rich-editor a {
+  color: var(--theme-accent);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+/* Note canvas — pure-white "paper" surface.
+   Redeclares theme CSS variables in scope so toolbar buttons, inputs, hover
+   states all flip to light-theme values even when the page is on a dark theme. */
+.note-paper {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+
+  --theme-bg-primary:   #ffffff;
+  --theme-bg-secondary: #f8fafc;
+  --theme-bg-card:      #ffffff;
+  --theme-bg-input:     #f1f5f9;
+  --theme-bg-hover:     #e2e8f0;
+  --theme-bg-modal:     #ffffff;
+  --theme-text-primary:   #0f172a;
+  --theme-text-secondary: #475569;
+  --theme-text-muted:     #94a3b8;
+  --theme-border:         #e2e8f0;
+  --theme-accent:         #3b82f6;
+  --theme-accent-hover:   #2563eb;
+  --theme-accent-light:   rgba(59, 130, 246, 0.1);
+  --theme-danger:         #ef4444;
+  --theme-danger-light:   #fca5a5;
+  --theme-danger-bg:      #fee2e2;
+  --theme-success:        #10b981;
+  --theme-warning:        #f59e0b;
+  --theme-highlight-bg:   #fef3c7;
+}

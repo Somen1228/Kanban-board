@@ -3,6 +3,23 @@
 
 import { isHtml, sanitizeHtml } from './htmlEditor';
 
+// Convert "color: red; text-align: center" → { color: 'red', textAlign: 'center' }
+function parseStyleAttr(value) {
+  if (!value) return {};
+  const out = {};
+  value.split(';').forEach((decl) => {
+    const colon = decl.indexOf(':');
+    if (colon < 0) return;
+    const prop = decl.slice(0, colon).trim();
+    const val = decl.slice(colon + 1).trim();
+    if (!prop || !val) return;
+    // kebab-case → camelCase
+    const camel = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    out[camel] = val;
+  });
+  return out;
+}
+
 const URL_RX = /(https?:\/\/[^\s<>]+)/g;
 const MD_RX  = /\*\*[^*\n]+\*\*|__[^_\n]+__|_[^_\n]+_|https?:\/\/[^\s]+/g;
 
@@ -97,19 +114,29 @@ function htmlNodeToReact(node, searchTerm, keyGen) {
   const tag = node.tagName.toLowerCase();
   const children = [...node.childNodes].map(n => htmlNodeToReact(n, searchTerm, keyGen)).flat().filter(Boolean);
 
+  // Forward inline style for tags where execCommand writes alignment/color/indent.
+  const inline = parseStyleAttr(node.getAttribute('style'));
   switch (tag) {
     case 'strong': case 'b':  return <strong key={keyGen()}>{children}</strong>;
     case 'em':     case 'i':  return <em key={keyGen()}>{children}</em>;
     case 'u':                 return <u key={keyGen()}>{children}</u>;
+    case 's': case 'strike': case 'del':
+                              return <s key={keyGen()}>{children}</s>;
+    case 'sup':               return <sup key={keyGen()}>{children}</sup>;
+    case 'sub':               return <sub key={keyGen()}>{children}</sub>;
     case 'br':                return <br key={keyGen()} />;
-    case 'div': case 'p':     return <div key={keyGen()}>{children}</div>;
-    case 'h1':                return <h1 key={keyGen()} style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0.4rem 0' }}>{children}</h1>;
-    case 'h2':                return <h2 key={keyGen()} style={{ fontSize: '1.1rem',  fontWeight: 600, margin: '0.35rem 0' }}>{children}</h2>;
-    case 'h3':                return <h3 key={keyGen()} style={{ fontSize: '1rem',    fontWeight: 600, margin: '0.3rem 0' }}>{children}</h3>;
-    case 'ul':                return <ul key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'disc',    margin: '0.25rem 0' }}>{children}</ul>;
-    case 'ol':                return <ol key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'decimal', margin: '0.25rem 0' }}>{children}</ol>;
-    case 'li':                return <li key={keyGen()}>{children}</li>;
-    case 'blockquote':        return <blockquote key={keyGen()} style={{ borderLeft: '3px solid var(--theme-border)', paddingLeft: '0.6rem', margin: '0.3rem 0', color: 'var(--theme-text-secondary)' }}>{children}</blockquote>;
+    case 'hr':                return <hr key={keyGen()} style={{ border: 'none', borderTop: '1px solid var(--theme-border)', margin: '0.6rem 0' }} />;
+    case 'div': case 'p':     return <div key={keyGen()} style={inline}>{children}</div>;
+    case 'h1':                return <h1 key={keyGen()} style={{ fontSize: '1.6rem',  fontWeight: 700, margin: '0.5rem 0', ...inline }}>{children}</h1>;
+    case 'h2':                return <h2 key={keyGen()} style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0.4rem 0', ...inline }}>{children}</h2>;
+    case 'h3':                return <h3 key={keyGen()} style={{ fontSize: '1.15rem', fontWeight: 600, margin: '0.35rem 0', ...inline }}>{children}</h3>;
+    case 'h4':                return <h4 key={keyGen()} style={{ fontSize: '1rem',    fontWeight: 600, margin: '0.3rem 0', ...inline }}>{children}</h4>;
+    case 'h5':                return <h5 key={keyGen()} style={{ fontSize: '0.9rem',  fontWeight: 600, margin: '0.3rem 0', ...inline }}>{children}</h5>;
+    case 'h6':                return <h6 key={keyGen()} style={{ fontSize: '0.8rem',  fontWeight: 600, margin: '0.3rem 0', ...inline }}>{children}</h6>;
+    case 'ul':                return <ul key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'disc',    margin: '0.25rem 0', ...inline }}>{children}</ul>;
+    case 'ol':                return <ol key={keyGen()} style={{ paddingLeft: '1.25rem', listStyle: 'decimal', margin: '0.25rem 0', ...inline }}>{children}</ol>;
+    case 'li':                return <li key={keyGen()} style={inline}>{children}</li>;
+    case 'blockquote':        return <blockquote key={keyGen()} style={{ borderLeft: '3px solid var(--theme-border)', paddingLeft: '0.6rem', margin: '0.3rem 0', color: 'var(--theme-text-secondary)', ...inline }}>{children}</blockquote>;
     case 'pre': {
       // Render code blocks with their classes intact (hljs spans inside)
       const lang = node.getAttribute('data-lang');
@@ -122,6 +149,10 @@ function htmlNodeToReact(node, searchTerm, keyGen) {
     case 'code': {
       const className = node.getAttribute('class') || '';
       return <code key={keyGen()} className={className}>{children}</code>;
+    }
+    case 'span': {
+      const className = node.getAttribute('class') || undefined;
+      return <span key={keyGen()} className={className} style={inline}>{children}</span>;
     }
     case 'a': {
       const href = node.getAttribute('href');

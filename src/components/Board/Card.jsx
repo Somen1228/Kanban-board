@@ -224,10 +224,15 @@ function Card({
     e.stopPropagation();
     const items = [
       { label: "Rename card", icon: <VscEdit />, onClick: startEditingTitle },
-      { label: "Add task",    icon: "＋",         onClick: () => setToggleAddTask(true) },
-      { divider: true },
-      { label: "Delete all tasks", icon: <VscTrash />, danger: true, onClick: deleteAllTasks },
     ];
+    if (isNote) {
+      items.push({ divider: true });
+      items.push({ label: "Clear note", icon: <VscTrash />, danger: true, onClick: clearNote });
+    } else {
+      items.push({ label: "Add task", icon: "＋", onClick: () => setToggleAddTask(true) });
+      items.push({ divider: true });
+      items.push({ label: "Delete all tasks", icon: <VscTrash />, danger: true, onClick: deleteAllTasks });
+    }
     if (!isProtectedColumn) {
       items.push({ label: "Delete card", icon: <VscTrash />, danger: true, onClick: handleDeleteCard });
     }
@@ -335,6 +340,11 @@ function Card({
 
   const handleDeleteCard = () => { setToggleMenu(false); setToDelete("card");  setShowDeleteWarning(true); };
   const deleteAllTasks   = () => { setToggleMenu(false); setToDelete("tasks"); Object.keys(tasks).length > 0 ? setShowDeleteWarning(true) : setDefaultModal(true); };
+  const clearNote        = () => {
+    setToggleMenu(false);
+    updateCardNote?.(index, { content: '', images: [] });
+    toast.success('Note cleared');
+  };
   const toggleDoneTask = (taskId) => {
     updateCardTasks(index, {
       ...tasks,
@@ -379,7 +389,7 @@ function Card({
 
   // ── Computed ───────────────────────────────────────────────────────────────
 
-  const isDark = ['dark', 'midnight', 'forest', 'sunset'].includes(currentThemeId);
+  const isDark = ['dark', 'midnight', 'forest', 'sunset', 'monokai', 'dracula', 'nightOwl', 'darcula'].includes(currentThemeId);
   const palette = isDark ? CARD_COLORS.dark : CARD_COLORS.light;
   const cardColor = palette[color] || { bg: 'var(--theme-accent)', text: '#fff' };
 
@@ -425,8 +435,8 @@ function Card({
             style={{ color: 'var(--theme-text-primary)' }}
             onMouseEnter={e => e.target.style.background = 'var(--theme-bg-hover)'}
             onMouseLeave={e => e.target.style.background = 'transparent'}
-            onClick={deleteAllTasks}>
-            Delete All Tasks
+            onClick={isNote ? clearNote : deleteAllTasks}>
+            {isNote ? 'Clear Note' : 'Delete All Tasks'}
           </p>
         </div>
       )}

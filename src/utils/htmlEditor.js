@@ -4,16 +4,53 @@
 const ALLOWED_TAGS = new Set([
   'STRONG', 'B', 'EM', 'I', 'U', 'BR', 'DIV', 'P', 'A', 'SPAN',
   // Note-editor extensions
-  'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'BLOCKQUOTE',
+  'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE',
+  // Inline text styling extensions
+  'S', 'STRIKE', 'DEL', 'SUP', 'SUB', 'HR',
   // Code block + inline code
   'PRE', 'CODE',
 ]);
+
+// Style attribute allowlist — execCommand emits these via styleWithCSS
+const ALLOWED_STYLE_PROPS = new Set([
+  'color',
+  'background-color',
+  'text-align',
+  'text-decoration',
+  'margin-left',
+  'padding-left',
+]);
+
+function sanitizeStyleAttr(value) {
+  if (typeof value !== 'string') return '';
+  return value
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .filter((decl) => {
+      const colon = decl.indexOf(':');
+      if (colon < 0) return false;
+      const prop = decl.slice(0, colon).trim().toLowerCase();
+      const val  = decl.slice(colon + 1).trim().toLowerCase();
+      // Block dangerous values
+      if (val.includes('url(') || val.includes('javascript:') || val.includes('expression(')) return false;
+      return ALLOWED_STYLE_PROPS.has(prop);
+    })
+    .join('; ');
+}
 const ALLOWED_ATTRS = {
   A: ['href', 'target', 'rel'],
   // Class names are needed for hljs syntax highlighting + language chip
   PRE:  ['class', 'data-lang'],
   CODE: ['class'],
-  SPAN: ['class'],
+  // style attr allowlist needed for color / highlight / alignment / indent
+  SPAN: ['class', 'style'],
+  P:    ['style'],
+  DIV:  ['style'],
+  H1:   ['style'], H2: ['style'], H3: ['style'],
+  H4:   ['style'], H5: ['style'], H6: ['style'],
+  BLOCKQUOTE: ['style'],
+  UL:   ['style'], OL: ['style'], LI: ['style'],
 };
 
 export function sanitizeHtml(html) {
@@ -35,7 +72,17 @@ export function sanitizeHtml(html) {
 
       const okAttrs = ALLOWED_ATTRS[child.tagName] || [];
       [...child.attributes].forEach((attr) => {
-        if (!okAttrs.includes(attr.name.toLowerCase())) child.removeAttribute(attr.name);
+        const name = attr.name.toLowerCase();
+        if (!okAttrs.includes(name)) {
+          child.removeAttribute(attr.name);
+          return;
+        }
+        // Sanitize the style attribute — keep only allowlisted CSS properties
+        if (name === 'style') {
+          const clean = sanitizeStyleAttr(attr.value);
+          if (clean) child.setAttribute('style', clean);
+          else child.removeAttribute('style');
+        }
       });
 
       // Reject javascript: and other dangerous URLs
@@ -51,7 +98,7 @@ export function sanitizeHtml(html) {
   return root.innerHTML;
 }
 
-const HTML_TAG_RX = /<(strong|b|em|i|u|br|div|p|a|span|h[1-3]|ul|ol|li|blockquote|pre|code)\b/i;
+const HTML_TAG_RX = /<(strong|b|em|i|u|s|strike|del|sup|sub|hr|br|div|p|a|span|h[1-6]|ul|ol|li|blockquote|pre|code)\b/i;
 export function isHtml(value) {
   return HTML_TAG_RX.test(value || '');
 }
